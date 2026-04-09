@@ -20,6 +20,15 @@ public class Main {
         ReportDAO reportDAO = new ReportDAO();
         try {
             reportDAO.reportPerDistributor();
+            reportDAO.reportPerWeek();
+            reportDAO.reportPerMonth();
+            reportDAO.weeklyRevenueExpenses();
+            reportDAO.monthlyRevenueExpenses();
+            reportDAO.totalDistributors();
+            reportDAO.revenuePerCity();
+            reportDAO.revenuePerDistributor();
+            reportDAO.paymentsPerMonth();
+            reportDAO.paymentsPerWorkType();
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }
