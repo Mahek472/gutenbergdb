@@ -167,4 +167,47 @@ public class PublicationDAO {
             }
         }
     }
+
+    // =========================
+    // EDITOR MANAGEMENT
+    // =========================
+
+    public void assignEditor(int pubId, int eid) throws SQLException {
+        // Assuming a junction table 'Works_on_publications' or similar exists for editors
+        String sql = "INSERT INTO Works_on_books (PubID, EID) VALUES (?, ?)"; 
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, pubId);
+            stmt.setInt(2, eid);
+            stmt.executeUpdate();
+            System.out.println("Assigned Editor EID " + eid + " to Publication " + pubId);
+        }
+    }
+
+    public void removeEditor(int pubId, int eid) throws SQLException {
+        String sql = "DELETE FROM Works_on_books WHERE PubID = ? AND EID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, pubId);
+            stmt.setInt(2, eid);
+            stmt.executeUpdate();
+            System.out.println("Removed Editor EID " + eid + " from Publication " + pubId);
+        }
+    }
+
+    public void viewPublicationsByEditor(int eid) throws SQLException {
+        String sql = "SELECT p.PubID, p.Title FROM Publications p " +
+                     "JOIN Works_on_books wb ON p.PubID = wb.PubID WHERE wb.EID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, eid);
+            ResultSet rs = stmt.executeQuery();
+            System.out.println("\nPublications for Editor EID: " + eid);
+            while (rs.next()) {
+                System.out.printf("ID: %d | Title: %s%n", 
+                    rs.getInt("PubID"), 
+                    rs.getString("Title"));
+            }
+        }
+    }
 }
