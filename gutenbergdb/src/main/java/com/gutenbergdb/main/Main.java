@@ -1,15 +1,22 @@
 package com.gutenbergdb.main;
-import java.util.Scanner;
-
 import com.gutenbergdb.dao.PublicationDAO;
 import com.gutenbergdb.dao.ReportDAO;
 
 public class Main {
     public static void main(String[] args) {
-        
-         PublicationDAO publicationDAO = new PublicationDAO();
-        Scanner scanner = new Scanner(System.in);
+        PublicationDAO dao = new PublicationDAO();
+        try{
+            dao.insertNewPeriodical();
+            dao.insertNewBook();
+            dao.showBookDetails(12);
+            dao.updatePeriodical();
+            dao.updateBookEdition();
+        }
+        catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
 
+<<<<<<< HEAD
         while (true) {
             System.out.println("Do you want to go to 1. Publication, 2. Production, 3. Distribution, 4. Reports\n");
             int big_choice = Integer.parseInt(scanner.nextLine());
@@ -260,6 +267,22 @@ public class Main {
         
 
         
+=======
+        ReportDAO reportDAO = new ReportDAO();
+        try {
+            reportDAO.reportPerDistributor();
+            reportDAO.reportPerWeek();
+            reportDAO.reportPerMonth();
+            reportDAO.weeklyRevenueExpenses();
+            reportDAO.monthlyRevenueExpenses();
+            reportDAO.totalDistributors();
+            reportDAO.revenuePerCity();
+            reportDAO.revenuePerDistributor();
+            reportDAO.paymentsPerMonth();
+            reportDAO.paymentsPerWorkType();
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+>>>>>>> 62c77e767fc17aa36ad423ec806e9465f890c287
     }
-}
 }

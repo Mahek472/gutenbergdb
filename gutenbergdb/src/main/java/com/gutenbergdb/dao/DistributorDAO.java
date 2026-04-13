@@ -90,13 +90,26 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     public void inputOrder(int iDID, int iPubID, String idate_ordered,
                            float ishipping_fee, String idate_due,
-                           float iunit_price, int inumber_of_copies) throws SQLException {
+                           float iunit_price, int inumber_of_copies, boolean is_book) throws SQLException {
 
         String sqlOrder = "INSERT INTO Orders (date_ordered, shipping_fee, date_due, is_produced) " +
                           "VALUES (?, ?, ?, FALSE)";
         String sqlPlaces = "INSERT INTO Places (OID, DID) VALUES (?, ?)";
-        String sqlOrderBooks = "INSERT INTO Orders_books (OID, PubID, unit_price, number_of_copies) " +
+        string sqlOrderStuff = "";
+        if (is_book) {
+            String sqlOrderBooks = "INSERT INTO Orders_books (OID, PubID, unit_price, number_of_copies) " +
                                "VALUES (?, ?, ?, ?)";
+            sqlOrderStuff = sqlOrderBooks;
+        }
+        else {
+            String sqlOrderIssues = "INSERT INTO Orders_issues (unit_price, number_of_copies, OID, PubID) " +
+                                "VALUES (?, ?, ?, ?)";
+            sqlOrderStuff = sqlOrderIssues;
+        }
+        
+
+
+        
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false); // begin transaction
@@ -125,7 +138,7 @@ public class DistributorDAO {
                 }
 
                 // Insert into Orders_books
-                try (PreparedStatement stmt = conn.prepareStatement(sqlOrderBooks)) {
+                try (PreparedStatement stmt = conn.prepareStatement(sqlOrderStuff)) {
                     stmt.setInt(1, generatedOID);
                     stmt.setInt(2, iPubID);
                     stmt.setFloat(3, iunit_price);
