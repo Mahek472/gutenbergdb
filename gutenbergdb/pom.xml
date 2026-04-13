@@ -10,6 +10,12 @@
       <artifactId>mariadb-java-client</artifactId>
       <version>3.3.3</version>
     </dependency>
+  
+    <dependency>
+      <groupId>com.sdl.delivery</groupId>
+      <artifactId>udp-data-model-compatible</artifactId>
+      <version>11.0.0-1029</version>
+    </dependency>
   </dependencies>
 
 </project>

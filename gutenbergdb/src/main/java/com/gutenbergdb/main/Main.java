@@ -1,11 +1,15 @@
 package com.gutenbergdb.main;
+<<<<<<< HEAD
 import java.util.Scanner;
+=======
+>>>>>>> cc49b68e7bceedc154c754140acb7d73746d8eef
 
 import com.gutenbergdb.dao.PublicationDAO;
 import com.gutenbergdb.dao.ReportDAO;
 
 public class Main {
     public static void main(String[] args) {
+<<<<<<< HEAD
         
          PublicationDAO publicationDAO = new PublicationDAO();
         Scanner scanner = new Scanner(System.in);
@@ -79,6 +83,19 @@ public class Main {
             } catch (Exception e) {
                 System.out.println("Operation failed: " + e.getMessage());
             }
+=======
+        PublicationDAO dao = new PublicationDAO();
+        try{
+            dao.insertNewPeriodical();
+            dao.insertNewBook();
+            dao.showBookDetails(12);
+            dao.updatePeriodical();
+            dao.updateBookEdition();
+        }
+        catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+>>>>>>> cc49b68e7bceedc154c754140acb7d73746d8eef
 
         ReportDAO reportDAO = new ReportDAO();
         try {
