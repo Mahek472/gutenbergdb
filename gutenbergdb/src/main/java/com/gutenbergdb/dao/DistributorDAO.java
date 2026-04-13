@@ -6,15 +6,15 @@ import java.util.List;
 
 public class DistributorDAO {
 
-    #private static final String URL      = "jdbc:mysql://localhost:3306/your_database";
-    #private static final String USERNAME = "x";
-    #private static final String PASSWORD = "y";
+    private static final String DB_URL = "jdbc:mariadb://classdb2.csc.ncsu.edu:3306/mrkantha";
+    private static final String USERNAME = "mrkantha";
+    private static final String PASSWORD = "200666691";
 
     // -------------------------------------------------------------------------
     // Helper: open a connection
     // -------------------------------------------------------------------------
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USERNAME, PASSWORD);
+        return DriverManager.getConnection(DB_URL, USERNAME, PASSWORD);
     }
 
     // -------------------------------------------------------------------------
@@ -232,143 +232,103 @@ public class DistributorDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // 7. Change distributor balance  (subtracts from outstanding_balance)
-    // -------------------------------------------------------------------------
-    public void changeDistributorBalance(int iDID, float ipayment_amount,
-                                         String ipayment_date) throws SQLException {
+    public void inputMultipleOrders(int numOfOrders) throws SQLException {
+        // Placeholder: This requires actual order data for each iteration.
+        for (int i = 0; i < numOfOrders; i++) {
+            System.out.println("Processing order " + (i + 1) + " of " + numOfOrders);
+        }
+    }
 
-        String sqlPayment = "INSERT INTO Distributor_payments (payment_date, payment_amount) " +
-                            "VALUES (?, ?)";
-        String sqlMake    = "INSERT INTO Make (DBID, DID) VALUES (?, ?)";
-        String sqlUpdate  = "UPDATE Distributors " +
-                            "SET outstanding_balance = outstanding_balance - ? " +
-                            "WHERE DID = ?";
+    public void billDistributor(int iDBID, int iDID, float ipayment_amount, String ipayment_date) throws SQLException {
+        updateBalance(iDBID, iDID, ipayment_amount, ipayment_date, true);
+    }
 
+    public void changeDistributorBalance(int iDBID, int iDID, float ipayment_amount, String ipayment_date) throws SQLException {
+        updateBalance(iDBID, iDID, ipayment_amount, ipayment_date, false);
+    }
+
+    private void updateBalance(int iDBID, int iDID, float ipayment_amount, String ipayment_date, boolean isAddition) throws SQLException {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
-                int generatedDBID;
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlPayment,
-                                             Statement.RETURN_GENERATED_KEYS)) {
-                    stmt.setString(1, ipayment_date);
-                    stmt.setFloat(2, ipayment_amount);
-                    stmt.executeUpdate();
-
-                    try (ResultSet keys = stmt.getGeneratedKeys()) {
-                        if (!keys.next()) throw new SQLException("Failed to retrieve generated DBID.");
-                        generatedDBID = keys.getInt(1);
-                    }
+                String sql1 = "INSERT INTO Distributor_payments (DBID, payment_date, payment_amount) VALUES (?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql1)) {
+                    pstmt.setInt(1, iDBID);
+                    pstmt.setString(2, ipayment_date);
+                    pstmt.setFloat(3, ipayment_amount);
+                    pstmt.executeUpdate();
                 }
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlMake)) {
-                    stmt.setInt(1, generatedDBID);
-                    stmt.setInt(2, iDID);
-                    stmt.executeUpdate();
+                String sql2 = "INSERT INTO Make (DBID, DID) VALUES (?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql2)) {
+                    pstmt.setInt(1, iDBID);
+                    pstmt.setInt(2, iDID);
+                    pstmt.executeUpdate();
                 }
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
-                    stmt.setFloat(1, ipayment_amount);
-                    stmt.setInt(2, iDID);
-                    stmt.executeUpdate();
+                String op = isAddition ? "+" : "-";
+                String sql3 = "UPDATE Distributors SET outstanding_balance = outstanding_balance " + op + " ? WHERE DID = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql3)) {
+                    pstmt.setFloat(1, ipayment_amount);
+                    pstmt.setInt(2, iDID);
+                    pstmt.executeUpdate();
                 }
-
                 conn.commit();
-
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
-            } finally {
-                conn.setAutoCommit(true);
             }
         }
     }
 
-    // -------------------------------------------------------------------------
-    // 8. Identify non-matching distributor balances
-    // -------------------------------------------------------------------------
     public String identifyNonMatchingDistributorBalances() throws SQLException {
-
-        String sql = "SELECT d.DID, d.name, d.outstanding_balance, " +
-                     "COALESCE(SUM(dp.payment_amount), 0) AS total_payments " +
+        String sql = "SELECT d.DID, d.name, d.outstanding_balance, COALESCE(SUM(dp.payment_amount), 0) AS total_payments " +
                      "FROM Distributors d " +
                      "LEFT JOIN Make m ON d.DID = m.DID " +
                      "LEFT JOIN Distributor_payments dp ON m.DBID = dp.DBID " +
                      "GROUP BY d.DID, d.name, d.outstanding_balance " +
                      "HAVING d.outstanding_balance != COALESCE(SUM(dp.payment_amount), 0)";
 
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("%-6s %-20s %-20s %-20s%n",
-                      "DID", "Name", "Outstanding Balance", "Total Payments"));
-        result.append("-".repeat(68)).append("\n");
-
-        try (Connection conn        = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs           = stmt.executeQuery()) {
-
-            List<String> rows = new ArrayList<>();
+        StringBuilder output = new StringBuilder();
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            output.append(String.format("%-10s %-20s %-20s %-20s\n", "DID", "Name", "Balance", "Total Payments"));
+            output.append("-".repeat(70)).append("\n");
             while (rs.next()) {
-                rows.add(String.format("%-6d %-20s %-20.2f %-20.2f%n",
-                          rs.getInt("DID"),
-                          rs.getString("name"),
-                          rs.getFloat("outstanding_balance"),
-                          rs.getFloat("total_payments")));
-            }
-
-            if (rows.isEmpty()) {
-                result.append("No mismatched distributor balances found.\n");
-            } else {
-                rows.forEach(result::append);
+                output.append(String.format("%-10d %-20s %-20.2f %-20.2f\n",
+                        rs.getInt("DID"),
+                        rs.getString("name"),
+                        rs.getFloat("outstanding_balance"),
+                        rs.getFloat("total_payments")));
             }
         }
-
-        return result.toString();
+        return output.toString();
     }
 
-    // -------------------------------------------------------------------------
-    // 9. Identify distributors in a location
-    // -------------------------------------------------------------------------
-    public String identifyDistributorInLocation(String location,
-                                                String type) throws SQLException {
-
+    public String identifyDistributorInLocation(String location, String type) throws SQLException {
         String sql = "SELECT DID, name, phone_number, category, outstanding_balance, addr, contact " +
-                     "FROM Distributors " +
-                     "WHERE addr LIKE ? AND category = ?";
-
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("%-6s %-20s %-15s %-15s %-20s %-30s %-20s%n",
-                      "DID", "Name", "Phone", "Category", "Balance", "Address", "Contact"));
-        result.append("-".repeat(128)).append("\n");
-
-        try (Connection conn        = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, "%" + location + "%"); // LIKE wildcard applied here, not in SQL string
-            stmt.setString(2, type);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                List<String> rows = new ArrayList<>();
+                     "FROM Distributors WHERE addr LIKE ? AND category = ?";
+        
+        StringBuilder output = new StringBuilder();
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, "%" + location + "%");
+            pstmt.setString(2, type);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                output.append(String.format("%-5s %-15s %-15s %-10s %-10s %-20s\n", "DID", "Name", "Phone", "Cat", "Bal", "Addr"));
+                output.append("-".repeat(80)).append("\n");
                 while (rs.next()) {
-                    rows.add(String.format("%-6d %-20s %-15s %-15s %-20.2f %-30s %-20s%n",
-                              rs.getInt("DID"),
-                              rs.getString("name"),
-                              rs.getString("phone_number"),
-                              rs.getString("category"),
-                              rs.getFloat("outstanding_balance"),
-                              rs.getString("addr"),
-                              rs.getString("contact")));
-                }
-
-                if (rows.isEmpty()) {
-                    result.append("No distributors found for location '")
-                          .append(location).append("' and category '").append(type).append("'.\n");
-                } else {
-                    rows.forEach(result::append);
+                    output.append(String.format("%-5d %-15s %-15s %-10s %-10.2f %-20s\n",
+                            rs.getInt("DID"),
+                            rs.getString("name"),
+                            rs.getString("phone_number"),
+                            rs.getString("category"),
+                            rs.getFloat("outstanding_balance"),
+                            rs.getString("addr")));
                 }
             }
         }
-
-        return result.toString();
+        return output.toString();
     }
 }
