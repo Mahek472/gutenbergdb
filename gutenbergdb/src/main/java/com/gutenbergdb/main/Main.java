@@ -176,7 +176,7 @@ public class Main {
                                         );
                                         break;
                                     }
-
+                
                                     case 3: {
                                         System.out.println("Enter Distributor ID:");
                                         int did_choice = Integer.parseInt(scanner.nextLine());
@@ -313,8 +313,8 @@ public class Main {
                             } catch (Exception e) {
                                 System.out.println("Error: " + e.getMessage());
                             }
+                            break;
                         }
-                        break;
                     }
 
                     // ================= REPORTS =================
