@@ -3,7 +3,6 @@ package com.gutenbergdb.dao;
 import com.gutenbergdb.util.DBConnection;
 
 import java.sql.*;
-import java.util.Scanner;
 
 /**
  * PublicationDAO
@@ -170,12 +169,11 @@ public class PublicationDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, pubId);
-            ResultSet rs = stmt.executeQuery();
-
-            System.out.println("\nBook Details");
-            System.out.printf("%-6s %-20s %-15s %-20s %-10s %-15s%n",
-                    "PubID", "Title", "Topic", "ISBN", "Edition", "Pub Date");
-            System.out.println("-".repeat(90));
+            try (ResultSet rs = stmt.executeQuery()) {
+                System.out.println("\nBook Details");
+                System.out.printf("%-6s %-20s %-15s %-20s %-10s %-15s%n",
+                        "PubID", "Title", "Topic", "ISBN", "Edition", "Pub Date");
+                System.out.println("-".repeat(90));
 
                 boolean found = false;
                 while (rs.next()) {
