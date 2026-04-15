@@ -17,18 +17,18 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 1. Enter a new distributor
     // -------------------------------------------------------------------------
-    public void enterNewDistributor(int iDID, String iname, String iphone_number,
+    public void enterNewDistributor(String iDID, String iname, String iphone_number,
                                     String icategory, float ioutstanding_balance,
                                     String iaddr, String icontact) throws SQLException {
 
         String sql = "INSERT INTO Distributors (DID, name, phone_number, category, " +
-                     "outstanding_balance, addr, contact) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                     "outstanding_balance, addr, contact, balance_as_of) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, iDID);
+            stmt.setString(1, iDID);
             stmt.setString(2, iname);
             stmt.setString(3, iphone_number);
             stmt.setString(4, icategory);
@@ -42,9 +42,18 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 2. Update distributor info
     // -------------------------------------------------------------------------
-    public void updateDistributorInfo(int iDID, String iname, String iphone_number,
+    public void updateDistributorInfo(String iDID, String iname, String iphone_number,
                                       String icategory, float ioutstanding_balance,
                                       String iaddr, String icontact) throws SQLException {
+
+        // Debug output
+        System.out.println("DEBUG: Updating distributor with DID=" + iDID + 
+                          ", name=" + iname +
+                          ", phone=" + iphone_number +
+                          ", category=" + icategory +
+                          ", balance=" + ioutstanding_balance +
+                          ", addr=" + iaddr +
+                          ", contact=" + icontact);
 
         String sql = "UPDATE Distributors " +
                      "SET name = ?, phone_number = ?, category = ?, " +
@@ -60,22 +69,28 @@ public class DistributorDAO {
             stmt.setFloat(4, ioutstanding_balance);
             stmt.setString(5, iaddr);
             stmt.setString(6, icontact);
-            stmt.setInt(7, iDID);
-            stmt.executeUpdate();
+            stmt.setString(7, iDID);
+            
+            System.out.println("DEBUG: About to execute UPDATE...");
+            int rows = stmt.executeUpdate();
+            System.out.println("DEBUG: Update completed, rows affected: " + rows);
+        } catch (SQLException e) {
+            System.out.println("DEBUG: SQLException occurred: " + e.getMessage());
+            throw e;
         }
     }
 
     // -------------------------------------------------------------------------
     // 3. Delete a distributor
     // -------------------------------------------------------------------------
-    public void deleteDistributor(int iDID) throws SQLException {
+    public void deleteDistributor(String iDID) throws SQLException {
 
         String sql = "DELETE FROM Distributors WHERE DID = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, iDID);
+            stmt.setString(1, iDID);
             stmt.executeUpdate();
         }
     }
@@ -85,7 +100,7 @@ public class DistributorDAO {
     //    NOTE: iOID is auto-generated here via LAST_INSERT_ID() to avoid
     //    the undefined iOID variable that was in the original code.
     // -------------------------------------------------------------------------
-    public void inputOrder(int iDID, int iPubID, String idate_ordered,
+    public void inputOrder(String iDID, int iPubID, String idate_ordered,
                            float ishipping_fee, String idate_due,
                            float iunit_price, int inumber_of_copies, boolean is_book) throws SQLException {
 
@@ -124,7 +139,7 @@ public class DistributorDAO {
                 // Insert into Places
                 try (PreparedStatement stmt = conn.prepareStatement(sqlPlaces)) {
                     stmt.setInt(1, generatedOID);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, iDID);
                     stmt.executeUpdate();
                 }
 
@@ -153,7 +168,7 @@ public class DistributorDAO {
     // 6. Bill a distributor  (adds to outstanding_balance)
     //    iDBID is auto-generated; retrieved via RETURN_GENERATED_KEYS.
     // -------------------------------------------------------------------------
-    public void billDistributor(int iDID, float ipayment_amount,
+    public void billDistributor(String iDID, float ipayment_amount,
                                 String ipayment_date) throws SQLException {
 
         String sqlPayment = "INSERT INTO Distributor_payments (payment_date, payment_amount) " +
@@ -182,13 +197,13 @@ public class DistributorDAO {
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlMake)) {
                     stmt.setInt(1, generatedDBID);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, iDID);
                     stmt.executeUpdate();
                 }
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
                     stmt.setFloat(1, ipayment_amount);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, iDID);
                     stmt.executeUpdate();
                 }
 
@@ -206,7 +221,7 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 7. Change distributor balance  (subtracts from outstanding_balance)
     // -------------------------------------------------------------------------
-    public void changeDistributorBalance(int iDID, float ipayment_amount,
+    public void changeDistributorBalance(String iDID, float ipayment_amount,
                                          String ipayment_date) throws SQLException {
 
         String sqlPayment = "INSERT INTO Distributor_payments (payment_date, payment_amount) " +
@@ -235,13 +250,13 @@ public class DistributorDAO {
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlMake)) {
                     stmt.setInt(1, generatedDBID);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, iDID);
                     stmt.executeUpdate();
                 }
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
                     stmt.setFloat(1, ipayment_amount);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, iDID);
                     stmt.executeUpdate();
                 }
 

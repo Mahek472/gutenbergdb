@@ -128,7 +128,7 @@ public class Main {
                                 switch (distChoice) {
                                     case 1: {
                                         System.out.println("Enter Distributor ID:");
-                                        int did_choice = Integer.parseInt(scanner.nextLine());
+                                        String did_choice = scanner.nextLine();
 
                                         System.out.println("Enter Distributor Name:");
                                         String dname_choice = scanner.nextLine();
@@ -162,7 +162,7 @@ public class Main {
 
                                     case 2: {
                                         System.out.println("Enter Distributor ID:");
-                                        int did_choice = Integer.parseInt(scanner.nextLine());
+                                        String did_choice = scanner.nextLine();
 
                                         System.out.println("Enter Distributor Name:");
                                         String dname_choice = scanner.nextLine();
@@ -196,7 +196,7 @@ public class Main {
 
                                     case 3: {
                                         System.out.println("Enter Distributor ID:");
-                                        int did_choice = Integer.parseInt(scanner.nextLine());
+                                        String did_choice = scanner.nextLine();
 
                                         distributorDAO.deleteDistributor(did_choice);
                                         break;
@@ -204,7 +204,7 @@ public class Main {
 
                                     case 4: {
                                         System.out.println("Enter Distributor ID:");
-                                        int did_choice = Integer.parseInt(scanner.nextLine());
+                                        String did_choice = scanner.nextLine();
 
                                         System.out.println("Enter Publication ID:");
                                         int pid_choice = Integer.parseInt(scanner.nextLine());
@@ -247,7 +247,7 @@ public class Main {
                                     for(int j = 0; j < num_orders; j++){
                                         System.out.println("Order " + (j+1) + ":");
                                         System.out.println("Enter Distributor ID:");
-                                        int did_choice = Integer.parseInt(scanner.nextLine());
+                                        String did_choice = scanner.nextLine();
 
                                         System.out.println("Enter Publication ID:");
                                         int pid_choice = Integer.parseInt(scanner.nextLine());
@@ -276,7 +276,7 @@ public class Main {
                                 }
                                 case 6:
                                     System.out.println("Enter Distributor ID:");
-                                    int did_choice = Integer.parseInt(scanner.nextLine());
+                                    String did_choice = scanner.nextLine();
 
                                     System.out.println("Enter payment amount:");
                                     float payment_amount = Float.parseFloat(scanner.nextLine());
@@ -290,9 +290,7 @@ public class Main {
 
                                 case 7: {
                                     System.out.println("Enter Distributor ID:");
-                                    int idid_choice = Integer.parseInt(scanner.nextLine());
-
-                                    System.out.println("Enter payment amount:");
+                                        String idid_choice = scanner.nextLine();
                                     float ipayment_amount = Float.parseFloat(scanner.nextLine());
 
                                     System.out.println("Enter payment date:");
