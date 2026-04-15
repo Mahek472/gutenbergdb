@@ -56,11 +56,12 @@ public class DistributorDAO {
     // 1. Enter a new distributor
     // -------------------------------------------------------------------------
     public void enterNewDistributor(String iDID, String iname, String iphone_number,
-                                    String icategory, String iaddr, String icontact) throws SQLException {
+                                    String icategory, float ioutstanding_balance,
+                                    String iaddr, String icontact) throws SQLException {
 
         String sql = "INSERT INTO Distributors (DID, name, phone_number, category, " +
                      "outstanding_balance, addr, contact, balance_as_of) " +
-                     "VALUES (?, ?, ?, ?, NULL, ?, ?, CURDATE())";
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -69,8 +70,9 @@ public class DistributorDAO {
             stmt.setString(2, iname);
             stmt.setString(3, iphone_number);
             stmt.setString(4, icategory);
-            stmt.setString(5, iaddr);
-            stmt.setString(6, icontact);
+            stmt.setFloat(5, ioutstanding_balance);
+            stmt.setString(6, iaddr);
+            stmt.setString(7, icontact);
             stmt.executeUpdate();
         }
     }
