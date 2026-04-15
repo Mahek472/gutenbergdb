@@ -142,9 +142,6 @@ public class Main {
                                         System.out.println("Enter Distributor Category:");
                                         String dcat_choice = scanner.nextLine();
 
-                                        System.out.println("Enter Distributor Outstanding Balance:");
-                                        float dbalance_choice = Float.parseFloat(scanner.nextLine());
-
                                         System.out.println("Enter Distributor Address:");
                                         String daddr_choice = scanner.nextLine();
 
@@ -156,7 +153,6 @@ public class Main {
                                                 dname_choice,
                                                 dphone_choice,
                                                 dcat_choice,
-                                                dbalance_choice,
                                                 daddr_choice,
                                                 dcontact_choice
                                         );
