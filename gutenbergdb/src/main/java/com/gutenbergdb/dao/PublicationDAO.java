@@ -4,6 +4,7 @@ import com.gutenbergdb.util.DBConnection;
 
 import java.sql.*;
 
+import java.util.Scanner;
 /**
  * PublicationDAO
  *
@@ -192,7 +193,7 @@ public class PublicationDAO {
                 }
             }
         }
-    
+    }
 
     /**
      * Shows periodical/publication details for a given PubID.
