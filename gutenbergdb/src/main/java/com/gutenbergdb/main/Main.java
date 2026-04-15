@@ -240,13 +240,38 @@ public class Main {
                                         System.out.println("Enter number of orders:");
                                         int num_orders = Integer.parseInt(scanner.nextLine());
 
-                                        distributorDAO.inputMultipleOrders(num_orders);
-                                        break;
-                                    }
-
-                                    case 6: {
+                                    for(int j = 0; j < num_orders; j++){
+                                        System.out.println("Order " + (j+1) + ":");
                                         System.out.println("Enter Distributor ID:");
                                         int did_choice = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter Publication ID:");
+                                        int pid_choice = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter Date Ordered:");
+                                        String date_ordered = scanner.nextLine();
+
+                                        System.out.println("Enter Shipping Fee:");
+                                        float shipping_fee = Float.parseFloat(scanner.nextLine());
+
+                                        System.out.println("Enter Date Due:");
+                                        String date_due = scanner.nextLine();
+
+                                        System.out.println("Enter Unit Price:");
+                                        float unit_price = Float.parseFloat(scanner.nextLine());
+
+                                        System.out.println("Enter Number of Copies:");
+                                        int num_copies = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Is the order for a book? (true/false):");
+                                        boolean is_book = Boolean.parseBoolean(scanner.nextLine());
+
+                                        distributorDAO.inputOrder(did_choice, pid_choice, date_ordered, shipping_fee, date_due, unit_price, num_copies, is_book); 
+                                    }
+                                    break;
+                                case 6:
+                                    System.out.println("Enter Distributor ID:");
+                                    int did_choice = Integer.parseInt(scanner.nextLine());
 
                                         System.out.println("Enter payment amount:");
                                         float payment_amount = Float.parseFloat(scanner.nextLine());
