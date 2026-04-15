@@ -1,20 +1,15 @@
 package com.gutenbergdb.main;
-<<<<<<< HEAD
-import java.util.Scanner;
-=======
->>>>>>> cc49b68e7bceedc154c754140acb7d73746d8eef
 
+import java.util.Scanner;
 import com.gutenbergdb.dao.PublicationDAO;
-import com.gutenbergdb.dao.ReportDAO;
 
 public class Main {
     public static void main(String[] args) {
-<<<<<<< HEAD
-        
-         PublicationDAO publicationDAO = new PublicationDAO();
+        PublicationDAO publicationDAO = new PublicationDAO();
         Scanner scanner = new Scanner(System.in);
 
         while (true) {
+            System.out.println("\n===== Publication Menu =====");
             System.out.println("1. Insert New Periodical");
             System.out.println("2. Insert New Book");
             System.out.println("3. Show Book Details");
@@ -31,9 +26,9 @@ public class Main {
             System.out.println("14. Exit");
             System.out.print("Enter your choice: ");
 
-            int choice = Integer.parseInt(scanner.nextLine());
-
             try {
+                int choice = Integer.parseInt(scanner.nextLine());
+
                 switch (choice) {
                     case 1:
                         publicationDAO.insertNewPeriodical();
@@ -76,42 +71,16 @@ public class Main {
                         break;
                     case 14:
                         System.out.println("Exiting program.");
+                        scanner.close();
                         return;
                     default:
                         System.out.println("Invalid choice. Please enter a number from 1 to 14.");
                 }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a valid number.");
             } catch (Exception e) {
                 System.out.println("Operation failed: " + e.getMessage());
             }
-=======
-        PublicationDAO dao = new PublicationDAO();
-        try{
-            dao.insertNewPeriodical();
-            dao.insertNewBook();
-            dao.showBookDetails(12);
-            dao.updatePeriodical();
-            dao.updateBookEdition();
-        }
-        catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
-        }
->>>>>>> cc49b68e7bceedc154c754140acb7d73746d8eef
-
-        ReportDAO reportDAO = new ReportDAO();
-        try {
-            reportDAO.reportPerDistributor();
-            reportDAO.reportPerWeek();
-            reportDAO.reportPerMonth();
-            reportDAO.weeklyRevenueExpenses();
-            reportDAO.monthlyRevenueExpenses();
-            reportDAO.totalDistributors();
-            reportDAO.revenuePerCity();
-            reportDAO.revenuePerDistributor();
-            reportDAO.paymentsPerMonth();
-            reportDAO.paymentsPerWorkType();
-        } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
         }
     }
-}
 }
