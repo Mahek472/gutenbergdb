@@ -1,6 +1,8 @@
 package com.gutenbergdb.main;
 
 import java.util.Scanner;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import com.gutenbergdb.dao.PublicationDAO;
 import com.gutenbergdb.dao.DistributorDAO;
@@ -123,7 +125,8 @@ public class Main {
                             System.out.print("Enter your choice: ");
 
                             int distChoice = Integer.parseInt(scanner.nextLine());
-
+                            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+                            DateTimeFormatter dbFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
                             try {
                                 switch (distChoice) {
                                     case 1: {
@@ -206,17 +209,24 @@ public class Main {
                                         System.out.println("Enter Distributor ID:");
                                         String did_choice = scanner.nextLine();
 
-                                        System.out.println("Enter Publication ID:");
-                                        int pid_choice = Integer.parseInt(scanner.nextLine());
+                                        System.out.println("Is the order for a book? (true/false):");
+                                        boolean is_book = Boolean.parseBoolean(scanner.nextLine());
 
-                                        System.out.println("Enter Date Ordered:");
-                                        String date_ordered = scanner.nextLine();
+                                        String identifier;
+                                        if (is_book) {
+                                            System.out.println("Enter ISBN:");
+                                            identifier = scanner.nextLine();
+                                        } else {
+                                            System.out.println("Enter Issue ID (IID):");
+                                            identifier = scanner.nextLine();
+                                        }
+
+                                        System.out.println("Enter Date Ordered (MM/DD/YYYY):");
+
+                                        String date_ordered = dbFormatter.format(LocalDate.parse(scanner.nextLine(), inputFormatter));
 
                                         System.out.println("Enter Shipping Fee:");
                                         float shipping_fee = Float.parseFloat(scanner.nextLine());
-
-                                        System.out.println("Enter Date Due:");
-                                        String date_due = scanner.nextLine();
 
                                         System.out.println("Enter Unit Price:");
                                         float unit_price = Float.parseFloat(scanner.nextLine());
@@ -224,15 +234,11 @@ public class Main {
                                         System.out.println("Enter Number of Copies:");
                                         int num_copies = Integer.parseInt(scanner.nextLine());
 
-                                        System.out.println("Is the order for a book? (true/false):");
-                                        boolean is_book = Boolean.parseBoolean(scanner.nextLine());
-
                                         distributorDAO.inputOrder(
                                                 did_choice,
-                                                pid_choice,
+                                                identifier,
                                                 date_ordered,
                                                 shipping_fee,
-                                                date_due,
                                                 unit_price,
                                                 num_copies,
                                                 is_book
@@ -249,17 +255,24 @@ public class Main {
                                         System.out.println("Enter Distributor ID:");
                                         String did_choice = scanner.nextLine();
 
-                                        System.out.println("Enter Publication ID:");
-                                        int pid_choice = Integer.parseInt(scanner.nextLine());
+                                        System.out.println("Is the order for a book? (true/false):");
+                                        boolean is_book = Boolean.parseBoolean(scanner.nextLine());
 
-                                        System.out.println("Enter Date Ordered:");
-                                        String date_ordered = scanner.nextLine();
+                                        String identifier;
+                                        if (is_book) {
+                                            System.out.println("Enter ISBN:");
+                                            identifier = scanner.nextLine();
+                                        } else {
+                                            System.out.println("Enter Issue ID (IID):");
+                                            identifier = scanner.nextLine();
+                                        }
+
+                                        System.out.println("Enter Date Ordered (MM/DD/YYYY):");
+
+                                        String date_ordered = dbFormatter.format(LocalDate.parse(scanner.nextLine(), inputFormatter));
 
                                         System.out.println("Enter Shipping Fee:");
                                         float shipping_fee = Float.parseFloat(scanner.nextLine());
-
-                                        System.out.println("Enter Date Due:");
-                                        String date_due = scanner.nextLine();
 
                                         System.out.println("Enter Unit Price:");
                                         float unit_price = Float.parseFloat(scanner.nextLine());
@@ -267,10 +280,7 @@ public class Main {
                                         System.out.println("Enter Number of Copies:");
                                         int num_copies = Integer.parseInt(scanner.nextLine());
 
-                                        System.out.println("Is the order for a book? (true/false):");
-                                        boolean is_book = Boolean.parseBoolean(scanner.nextLine());
-
-                                        distributorDAO.inputOrder(did_choice, pid_choice, date_ordered, shipping_fee, date_due, unit_price, num_copies, is_book); 
+                                        distributorDAO.inputOrder(did_choice, identifier, date_ordered, shipping_fee, unit_price, num_copies, is_book);
                                     }
                                     break;
                                 }
@@ -281,8 +291,9 @@ public class Main {
                                     System.out.println("Enter payment amount:");
                                     float payment_amount = Float.parseFloat(scanner.nextLine());
 
-                                    System.out.println("Enter payment date:");
-                                    String payment_date = scanner.nextLine();
+                                    System.out.println("Enter payment date (MM/DD/YYYY):");
+                                    
+                                    String payment_date = dbFormatter.format(LocalDate.parse(scanner.nextLine(), inputFormatter));
 
                                     distributorDAO.billDistributor(did_choice, payment_amount, payment_date);
                                     break;
@@ -290,18 +301,21 @@ public class Main {
 
                                 case 7: {
                                     System.out.println("Enter Distributor ID:");
-                                        String idid_choice = scanner.nextLine();
+                                    String idid_choice = scanner.nextLine();
+                                    
+                                    System.out.println("Enter payment amount:");
                                     float ipayment_amount = Float.parseFloat(scanner.nextLine());
 
-                                    System.out.println("Enter payment date:");
-                                    String ipayment_date = scanner.nextLine();
+                                    System.out.println("Enter payment date (MM/DD/YYYY):");
+
+                                    String ipayment_date = dbFormatter.format(LocalDate.parse(scanner.nextLine(), inputFormatter));
 
                                     distributorDAO.changeDistributorBalance(idid_choice, ipayment_amount, ipayment_date);
                                     break;
                                 }
 
                                 case 8: {
-                                    distributorDAO.identifyNonMatchingDistributorBalances();
+                                    System.out.println(distributorDAO.identifyNonMatchingDistributorBalances());
                                     break;
                                 }
 
@@ -312,7 +326,7 @@ public class Main {
                                     System.out.println("Enter type:");
                                     String type = scanner.nextLine();
 
-                                    distributorDAO.identifyDistributorInLocation(location, type);
+                                    System.out.println(distributorDAO.identifyDistributorInLocation(location, type));
                                     break;
                                 }
 
