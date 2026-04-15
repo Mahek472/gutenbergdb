@@ -8,10 +8,14 @@ import com.gutenbergdb.dao.ReportDAO;
 
 public class Main {
     public static void main(String[] args) {
-        PublicationDAO publicationDAO = new PublicationDAO();
-        DistributorDAO distributorDAO = new DistributorDAO();
-        ReportDAO reportDAO = new ReportDAO();
-        Scanner scanner = new Scanner(System.in);
+        try {
+            PublicationDAO publicationDAO = new PublicationDAO();
+
+            DistributorDAO distributorDAO = new DistributorDAO();
+
+            ReportDAO reportDAO = new ReportDAO();
+
+            Scanner scanner = new Scanner(System.in);
 
         while (true) {
             System.out.println("\n===== Main Menu =====");
@@ -144,7 +148,7 @@ public class Main {
                                         System.out.println("Enter Distributor Contact:");
                                         String dcontact_choice = scanner.nextLine();
 
-                                        distributorDAO.insertNewDistributor(
+                                        distributorDAO.enterNewDistributor(
                                                 did_choice,
                                                 dname_choice,
                                                 dphone_choice,
@@ -269,49 +273,50 @@ public class Main {
                                         distributorDAO.inputOrder(did_choice, pid_choice, date_ordered, shipping_fee, date_due, unit_price, num_copies, is_book); 
                                     }
                                     break;
+                                }
                                 case 6:
                                     System.out.println("Enter Distributor ID:");
                                     int did_choice = Integer.parseInt(scanner.nextLine());
 
-                                        System.out.println("Enter payment amount:");
-                                        float payment_amount = Float.parseFloat(scanner.nextLine());
+                                    System.out.println("Enter payment amount:");
+                                    float payment_amount = Float.parseFloat(scanner.nextLine());
 
-                                        System.out.println("Enter payment date:");
-                                        int payment_date = Integer.parseInt(scanner.nextLine());
+                                    System.out.println("Enter payment date:");
+                                    String payment_date = scanner.nextLine();
 
-                                        distributorDAO.billDistributor(did_choice, payment_amount, payment_date);
-                                        break;
-                                    }
+                                    distributorDAO.billDistributor(did_choice, payment_amount, payment_date);
+                                    break;
+                                    
 
-                                    case 7: {
-                                        System.out.println("Enter Distributor ID:");
-                                        int did_choice = Integer.parseInt(scanner.nextLine());
+                                case 7: {
+                                    System.out.println("Enter Distributor ID:");
+                                    int idid_choice = Integer.parseInt(scanner.nextLine());
 
-                                        System.out.println("Enter payment amount:");
-                                        float payment_amount = Float.parseFloat(scanner.nextLine());
+                                    System.out.println("Enter payment amount:");
+                                    float ipayment_amount = Float.parseFloat(scanner.nextLine());
 
-                                        System.out.println("Enter payment date:");
-                                        int payment_date = Integer.parseInt(scanner.nextLine());
+                                    System.out.println("Enter payment date:");
+                                    String ipayment_date = scanner.nextLine();
 
-                                        distributorDAO.changeDistributorBalance(did_choice, payment_amount, payment_date);
-                                        break;
-                                    }
+                                    distributorDAO.changeDistributorBalance(idid_choice, ipayment_amount, ipayment_date);
+                                    break;
+                                }
 
-                                    case 8: {
-                                        distributorDAO.identifyNonMatchingDistributorBalances();
-                                        break;
-                                    }
+                                case 8: {
+                                    distributorDAO.identifyNonMatchingDistributorBalances();
+                                    break;
+                                }
 
-                                    case 9: {
-                                        System.out.println("Enter location:");
-                                        String location = scanner.nextLine();
+                                case 9: {
+                                    System.out.println("Enter location:");
+                                    String location = scanner.nextLine();
 
-                                        System.out.println("Enter type:");
-                                        String type = scanner.nextLine();
+                                    System.out.println("Enter type:");
+                                    String type = scanner.nextLine();
 
-                                        distributorDAO.identifyDistributorInLocation(location, type);
-                                        break;
-                                    }
+                                    distributorDAO.identifyDistributorInLocation(location, type);
+                                    break;
+                                }
 
                                     case 10: {
                                         break;
@@ -363,6 +368,11 @@ public class Main {
             } catch (Exception e) {
                 System.out.println("Operation failed: " + e.getMessage());
             }
+        }
+        } catch (Exception e) {
+            System.err.println("FATAL ERROR during initialization:");
+            e.printStackTrace();
+            System.out.flush();
         }
     }
 }

@@ -1,20 +1,17 @@
 package com.gutenbergdb.dao;
 
+import com.gutenbergdb.util.DBConnection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DistributorDAO {
 
-    #private static final String URL      = "jdbc:mysql://localhost:3306/your_database";
-    #private static final String USERNAME = "x";
-    #private static final String PASSWORD = "y";
-
     // -------------------------------------------------------------------------
-    // Helper: open a connection
+    // Helper: open a connection (uses DBConnection to load properties)
     // -------------------------------------------------------------------------
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USERNAME, PASSWORD);
+        return DBConnection.getConnection();
     }
 
     // -------------------------------------------------------------------------
@@ -95,21 +92,15 @@ public class DistributorDAO {
         String sqlOrder = "INSERT INTO Orders (date_ordered, shipping_fee, date_due, is_produced) " +
                           "VALUES (?, ?, ?, FALSE)";
         String sqlPlaces = "INSERT INTO Places (OID, DID) VALUES (?, ?)";
-        string sqlOrderStuff = "";
+        String sqlOrderStuff;
         if (is_book) {
-            String sqlOrderBooks = "INSERT INTO Orders_books (OID, PubID, unit_price, number_of_copies) " +
-                               "VALUES (?, ?, ?, ?)";
-            sqlOrderStuff = sqlOrderBooks;
+            sqlOrderStuff = "INSERT INTO Orders_books (OID, PubID, unit_price, number_of_copies) " +
+                            "VALUES (?, ?, ?, ?)";
         }
         else {
-            String sqlOrderIssues = "INSERT INTO Orders_issues (unit_price, number_of_copies, OID, PubID) " +
-                                "VALUES (?, ?, ?, ?)";
-            sqlOrderStuff = sqlOrderIssues;
+            sqlOrderStuff = "INSERT INTO Orders_issues (unit_price, number_of_copies, OID, PubID) " +
+                            "VALUES (?, ?, ?, ?)";
         }
-        
-
-
-        
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false); // begin transaction
@@ -157,39 +148,6 @@ public class DistributorDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Input multiple orders
-    //    Callers must now supply full order details for each order.
-    //    Orders are passed in as a simple inner class / record.
-    // -------------------------------------------------------------------------
-    public static class OrderRequest {
-        public final int    DID;
-        public final int    PubID;
-        public final String date_ordered;
-        public final float  shipping_fee;
-        public final String date_due;
-        public final float  unit_price;
-        public final int    number_of_copies;
-
-        public OrderRequest(int DID, int PubID, String date_ordered, float shipping_fee,
-                            String date_due, float unit_price, int number_of_copies) {
-            this.DID             = DID;
-            this.PubID           = PubID;
-            this.date_ordered    = date_ordered;
-            this.shipping_fee    = shipping_fee;
-            this.date_due        = date_due;
-            this.unit_price      = unit_price;
-            this.number_of_copies = number_of_copies;
-        }
-    }
-
-    public void inputMultipleOrders(List<OrderRequest> orders) throws SQLException {
-        for (OrderRequest order : orders) {
-            inputOrder(order.DID, order.PubID, order.date_ordered,
-                       order.shipping_fee, order.date_due,
-                       order.unit_price, order.number_of_copies);
-        }
-    }
 
     // -------------------------------------------------------------------------
     // 6. Bill a distributor  (adds to outstanding_balance)
