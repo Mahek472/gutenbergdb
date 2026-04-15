@@ -131,7 +131,7 @@ public class Main {
                                         System.out.println("Enter Distributor Contact:");
                                         String dcontact_choice = scanner.nextLine();
 
-                                        distributorDAO.insertNewDistributor(
+                                        distributorDAO.enterNewDistributor(
                                                 did_choice,
                                                 dname_choice,
                                                 dphone_choice,
@@ -227,7 +227,7 @@ public class Main {
                                         System.out.println("Enter number of orders:");
                                         int num = Integer.parseInt(scanner.nextLine());
 
-                                    for(int j = 0; j < num_orders; j++){
+                                    for(int j = 0; j < num; j++){
                                         System.out.println("Order " + (j+1) + ":");
                                         System.out.println("Enter Distributor ID:");
                                         int did_choice = Integer.parseInt(scanner.nextLine());
@@ -256,7 +256,8 @@ public class Main {
                                         distributorDAO.inputOrder(did_choice, pid_choice, date_ordered, shipping_fee, date_due, unit_price, num_copies, is_book); 
                                     }
                                     break;
-                                case 6:
+                                }
+                                case 6: {
                                     System.out.println("Enter Distributor ID:");
                                     int did_choice = Integer.parseInt(scanner.nextLine());
 
@@ -328,7 +329,7 @@ public class Main {
                         System.out.println("Exiting program.");
                         scanner.close();
                         return;
-
+                    }
                     default: {
                         System.out.println("Invalid choice. Please enter a number from 1 to 4.");
                     }
