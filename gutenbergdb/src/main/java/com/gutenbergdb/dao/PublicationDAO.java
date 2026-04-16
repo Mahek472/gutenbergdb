@@ -73,7 +73,6 @@ public class PublicationDAO {
 
     // -------------------------------------------------------------------------
     // 2. Insert New Book
-    // Inserts into Publications and Books
     // -------------------------------------------------------------------------
     public void insertNewBook() throws SQLException {
         System.out.println("\nInsert New Book");
@@ -136,7 +135,7 @@ public class PublicationDAO {
 
                 pubStmt.setString(1, pubId);
                 pubStmt.setString(2, publicationTitle);
-                pubStmt.setNull(3, Types.VARCHAR); // books have no periodicity
+                pubStmt.setNull(3, Types.VARCHAR);
                 pubStmt.setString(4, topic);
                 int pubRows = pubStmt.executeUpdate();
 
@@ -357,7 +356,7 @@ public class PublicationDAO {
     // 6. Update Book Edition
     // -------------------------------------------------------------------------
     public void updateBookEdition() throws SQLException {
-        System.out.println("\nUpdate Book Edition");
+        System.out.println("\nUpdate Book (Books table only)");
 
         System.out.print("Enter PubID of the book: ");
         String pubId = scanner.nextLine().trim();
@@ -365,22 +364,31 @@ public class PublicationDAO {
         System.out.println("\nCurrent details:");
         showBookDetailsByPubId(pubId);
 
+        System.out.print("Enter new book title: ");
+        String bookTitle = scanner.nextLine();
+
         System.out.print("Enter new edition number: ");
         int editionNumber = Integer.parseInt(scanner.nextLine());
 
-        String sql = "UPDATE Books SET edition_number = ? WHERE PubID = ?";
+        System.out.print("Enter new publication date (YYYY-MM-DD): ");
+        String publicationDate = scanner.nextLine();
+
+        String bookSql = "UPDATE Books SET title = ?, edition_number = ?, publication_date = ? WHERE PubID = ?";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(bookSql)) {
 
-            stmt.setInt(1, editionNumber);
-            stmt.setString(2, pubId);
+            stmt.setString(1, bookTitle);
+            stmt.setInt(2, editionNumber);
+            stmt.setDate(3, Date.valueOf(publicationDate));
+            stmt.setString(4, pubId);
 
             int rows = stmt.executeUpdate();
+
             if (rows == 0) {
                 System.out.println("Book not found for PubID: " + pubId);
             } else {
-                System.out.println("Book edition updated successfully.");
+                System.out.println("Book updated successfully.");
                 System.out.println("\nUpdated details:");
                 showBookDetailsByPubId(pubId);
             }
@@ -528,8 +536,8 @@ public class PublicationDAO {
                 "'via article in issue' AS assigned_via " +
                 "FROM Works_on_articles woa " +
                 "JOIN Workers w ON woa.EID = w.EID " +
-                "JOIN Contains_articles ca ON woa.AID = ca.AID " +
-                "JOIN Issues i ON ca.IID = i.IID " +
+                "JOIN Articles a ON woa.AID = a.AID " +
+                "JOIN Issues i ON a.IID = i.IID " +
                 "JOIN Publications p ON i.PubID = p.PubID " +
                 "WHERE woa.EID = ? " +
                 "ORDER BY PubID";
@@ -577,12 +585,39 @@ public class PublicationDAO {
     }
 
     private void showTableOfContentsByPublication(String pubId) throws SQLException {
+        String bookCheckSql = "SELECT COUNT(*) FROM Books WHERE PubID = ?";
+        String periodicalCheckSql = "SELECT COUNT(*) FROM Periodicals WHERE PubID = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement bookStmt = conn.prepareStatement(bookCheckSql);
+             PreparedStatement periodicalStmt = conn.prepareStatement(periodicalCheckSql)) {
+
+            bookStmt.setString(1, pubId);
+            try (ResultSet rs = bookStmt.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    showBookTableOfContentsByPubId(pubId);
+                    return;
+                }
+            }
+
+            periodicalStmt.setString(1, pubId);
+            try (ResultSet rs = periodicalStmt.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    showPeriodicalTableOfContentsByPubId(pubId);
+                    return;
+                }
+            }
+
+            System.out.println("No book or periodical found for PubID: " + pubId);
+        }
+    }
+
+    private void showPeriodicalTableOfContentsByPubId(String pubId) throws SQLException {
         String sql = "SELECT p.Title AS publication_title, i.IID, i.Subtitle, i.publication_date, " +
                      "a.AID, a.Title AS article_title, a.topic " +
                      "FROM Publications p " +
                      "JOIN Issues i ON p.PubID = i.PubID " +
-                     "LEFT JOIN Contains_articles ca ON i.IID = ca.IID " +
-                     "LEFT JOIN Articles a ON ca.AID = a.AID " +
+                     "LEFT JOIN Articles a ON i.IID = a.IID " +
                      "WHERE p.PubID = ? " +
                      "ORDER BY i.IID, a.AID";
 
@@ -592,7 +627,7 @@ public class PublicationDAO {
             stmt.setString(1, pubId);
 
             try (ResultSet rs = stmt.executeQuery()) {
-                System.out.println("\nTable Of Contents");
+                System.out.println("\nPeriodical Table Of Contents");
                 System.out.printf("%-30s %-8s %-35s %-15s %-8s %-30s %-20s%n",
                         "Publication", "IID", "Issue Subtitle", "Issue Date", "AID", "Article", "Topic");
                 System.out.println("-".repeat(160));
@@ -611,7 +646,48 @@ public class PublicationDAO {
                 }
 
                 if (!found) {
-                    System.out.println("No table of contents found for PubID: " + pubId);
+                    System.out.println("No articles/issues found for PubID: " + pubId);
+                }
+            }
+        }
+    }
+
+    private void showBookTableOfContentsByPubId(String pubId) throws SQLException {
+        String sql = "SELECT p.PubID, p.Title AS publication_title, b.ISBN, b.title AS book_title, " +
+                     "c.CID, c.title AS chapter_title, c.topic, c.written_date " +
+                     "FROM Publications p " +
+                     "JOIN Books b ON p.PubID = b.PubID " +
+                     "LEFT JOIN Chapters c ON b.ISBN = c.ISBN " +
+                     "WHERE p.PubID = ? " +
+                     "ORDER BY c.CID";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, pubId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                System.out.println("\nBook Table Of Contents");
+                System.out.printf("%-10s %-30s %-35s %-20s %-8s %-35s %-20s %-15s%n",
+                        "PubID", "Publication", "Book Title", "ISBN", "CID", "Chapter Title", "Topic", "Written Date");
+                System.out.println("-".repeat(190));
+
+                boolean found = false;
+                while (rs.next()) {
+                    found = true;
+                    System.out.printf("%-10s %-30s %-35s %-20s %-8s %-35s %-20s %-15s%n",
+                            rs.getString("PubID"),
+                            rs.getString("publication_title"),
+                            rs.getString("book_title"),
+                            rs.getString("ISBN"),
+                            rs.getString("CID"),
+                            rs.getString("chapter_title"),
+                            rs.getString("topic"),
+                            rs.getDate("written_date"));
+                }
+
+                if (!found) {
+                    System.out.println("No book/chapters found for PubID: " + pubId);
                 }
             }
         }
@@ -619,7 +695,6 @@ public class PublicationDAO {
 
     // -------------------------------------------------------------------------
     // 12. Add Article To Periodic Publication
-    // Adds article to an existing issue
     // -------------------------------------------------------------------------
     public void addArticleToPeriodicPublication() throws SQLException {
         System.out.println("\nAdd Article To Periodic Publication");
@@ -647,16 +722,14 @@ public class PublicationDAO {
 
         String issueCheckSql = "SELECT COUNT(*) FROM Issues WHERE IID = ? AND PubID = ?";
         String articleCheckSql = "SELECT COUNT(*) FROM Articles WHERE AID = ?";
-        String articleInsertSql = "INSERT INTO Articles (AID, Title, full_text, written_date, topic) VALUES (?, ?, ?, ?, ?)";
-        String containsInsertSql = "INSERT INTO Contains_articles (IID, AID) VALUES (?, ?)";
+        String articleInsertSql = "INSERT INTO Articles (AID, title, topic, written_date, full_text, IID) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
 
             try (PreparedStatement issueCheckStmt = conn.prepareStatement(issueCheckSql);
                  PreparedStatement articleCheckStmt = conn.prepareStatement(articleCheckSql);
-                 PreparedStatement articleInsertStmt = conn.prepareStatement(articleInsertSql);
-                 PreparedStatement containsInsertStmt = conn.prepareStatement(containsInsertSql)) {
+                 PreparedStatement articleInsertStmt = conn.prepareStatement(articleInsertSql)) {
 
                 issueCheckStmt.setString(1, iid);
                 issueCheckStmt.setString(2, pubId);
@@ -679,19 +752,15 @@ public class PublicationDAO {
 
                 articleInsertStmt.setString(1, aid);
                 articleInsertStmt.setString(2, articleTitle);
-                articleInsertStmt.setString(3, fullText);
+                articleInsertStmt.setString(3, topic);
                 articleInsertStmt.setDate(4, Date.valueOf(writtenDate));
-                articleInsertStmt.setString(5, topic);
-                int articleRows = articleInsertStmt.executeUpdate();
+                articleInsertStmt.setString(5, fullText);
+                articleInsertStmt.setString(6, iid);
 
-                containsInsertStmt.setString(1, iid);
-                containsInsertStmt.setString(2, aid);
-                int containsRows = containsInsertStmt.executeUpdate();
-
+                int rows = articleInsertStmt.executeUpdate();
                 conn.commit();
-                System.out.println("Article added successfully. Articles rows: " + articleRows +
-                        ", Contains_articles rows: " + containsRows);
 
+                System.out.println("Article added successfully. Articles rows: " + rows);
                 showTableOfContentsByPublication(pubId);
 
             } catch (SQLException e) {
@@ -714,54 +783,33 @@ public class PublicationDAO {
         String aid = scanner.nextLine().trim();
 
         String pubIdLookupSql = "SELECT PubID FROM Issues WHERE IID = ?";
-        String deleteAssignmentSql = "DELETE FROM Works_on_articles WHERE AID = ?";
-        String deleteContainsSql = "DELETE FROM Contains_articles WHERE IID = ? AND AID = ?";
-        String deleteArticleSql = "DELETE FROM Articles WHERE AID = ?";
+        String updateSql = "UPDATE Articles SET IID = NULL WHERE AID = ? AND IID = ?";
 
         try (Connection conn = DBConnection.getConnection()) {
-            conn.setAutoCommit(false);
+            String pubId = null;
 
-            try (PreparedStatement pubIdStmt = conn.prepareStatement(pubIdLookupSql);
-                 PreparedStatement deleteAssignmentStmt = conn.prepareStatement(deleteAssignmentSql);
-                 PreparedStatement deleteContainsStmt = conn.prepareStatement(deleteContainsSql);
-                 PreparedStatement deleteArticleStmt = conn.prepareStatement(deleteArticleSql)) {
-
-                String pubId = null;
+            try (PreparedStatement pubIdStmt = conn.prepareStatement(pubIdLookupSql)) {
                 pubIdStmt.setString(1, iid);
                 try (ResultSet rs = pubIdStmt.executeQuery()) {
                     if (rs.next()) {
                         pubId = rs.getString("PubID");
                     }
                 }
+            }
 
-                deleteAssignmentStmt.setString(1, aid);
-                int assignmentRows = deleteAssignmentStmt.executeUpdate();
+            try (PreparedStatement stmt = conn.prepareStatement(updateSql)) {
+                stmt.setString(1, aid);
+                stmt.setString(2, iid);
 
-                deleteContainsStmt.setString(1, iid);
-                deleteContainsStmt.setString(2, aid);
-                int containsRows = deleteContainsStmt.executeUpdate();
-
-                deleteArticleStmt.setString(1, aid);
-                int articleRows = deleteArticleStmt.executeUpdate();
-
-                if (containsRows == 0 && articleRows == 0) {
-                    conn.rollback();
+                int rows = stmt.executeUpdate();
+                if (rows == 0) {
                     System.out.println("No matching article/issue record found.");
-                    return;
+                } else {
+                    System.out.println("Article detached successfully from issue.");
+                    if (pubId != null) {
+                        showTableOfContentsByPublication(pubId);
+                    }
                 }
-
-                conn.commit();
-                System.out.println("Delete completed. Works_on_articles rows: " + assignmentRows +
-                        ", Contains_articles rows: " + containsRows +
-                        ", Articles rows: " + articleRows);
-
-                if (pubId != null) {
-                    showTableOfContentsByPublication(pubId);
-                }
-
-            } catch (SQLException e) {
-                conn.rollback();
-                System.out.println("Delete article failed: " + e.getMessage());
             }
         }
     }
@@ -774,6 +822,9 @@ public class PublicationDAO {
 
         System.out.print("Enter ISBN: ");
         String isbn = scanner.nextLine().trim();
+
+        System.out.print("Enter Chapter ID (CID): ");
+        String cid = scanner.nextLine().trim();
 
         System.out.print("Enter Chapter Title: ");
         String chapterTitle = scanner.nextLine();
@@ -788,8 +839,8 @@ public class PublicationDAO {
         String fullText = scanner.nextLine();
 
         String bookCheckSql = "SELECT COUNT(*) FROM Books WHERE ISBN = ?";
-        String chapterCheckSql = "SELECT COUNT(*) FROM Chapters WHERE ISBN = ? AND title = ?";
-        String insertSql = "INSERT INTO Chapters (ISBN, title, topic, written_date, full_text) VALUES (?, ?, ?, ?, ?)";
+        String chapterCheckSql = "SELECT COUNT(*) FROM Chapters WHERE CID = ?";
+        String insertSql = "INSERT INTO Chapters (CID, ISBN, title, topic, written_date, full_text) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
@@ -807,21 +858,21 @@ public class PublicationDAO {
                     }
                 }
 
-                chapterCheckStmt.setString(1, isbn);
-                chapterCheckStmt.setString(2, chapterTitle);
+                chapterCheckStmt.setString(1, cid);
                 try (ResultSet rs = chapterCheckStmt.executeQuery()) {
                     if (rs.next() && rs.getInt(1) > 0) {
-                        System.out.println("Chapter already exists for ISBN " + isbn + " and title '" + chapterTitle + "'.");
+                        System.out.println("Chapter with CID " + cid + " already exists.");
                         conn.rollback();
                         return;
                     }
                 }
 
-                insertStmt.setString(1, isbn);
-                insertStmt.setString(2, chapterTitle);
-                insertStmt.setString(3, topic);
-                insertStmt.setDate(4, Date.valueOf(writtenDate));
-                insertStmt.setString(5, fullText);
+                insertStmt.setString(1, cid);
+                insertStmt.setString(2, isbn);
+                insertStmt.setString(3, chapterTitle);
+                insertStmt.setString(4, topic);
+                insertStmt.setDate(5, Date.valueOf(writtenDate));
+                insertStmt.setString(6, fullText);
 
                 int rows = insertStmt.executeUpdate();
                 conn.commit();
@@ -845,41 +896,23 @@ public class PublicationDAO {
         System.out.print("Enter ISBN: ");
         String isbn = scanner.nextLine().trim();
 
-        System.out.print("Enter Chapter Title: ");
-        String chapterTitle = scanner.nextLine();
+        System.out.print("Enter Chapter ID (CID): ");
+        String cid = scanner.nextLine().trim();
 
-        String deleteAssignmentsSql = "DELETE FROM Works_on_chapters WHERE ISBN = ? AND chapter_title = ?";
-        String deleteChapterSql = "DELETE FROM Chapters WHERE ISBN = ? AND title = ?";
+        String updateSql = "UPDATE Chapters SET ISBN = NULL WHERE CID = ? AND ISBN = ?";
 
-        try (Connection conn = DBConnection.getConnection()) {
-            conn.setAutoCommit(false);
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(updateSql)) {
 
-            try (PreparedStatement deleteAssignmentsStmt = conn.prepareStatement(deleteAssignmentsSql);
-                 PreparedStatement deleteChapterStmt = conn.prepareStatement(deleteChapterSql)) {
+            stmt.setString(1, cid);
+            stmt.setString(2, isbn);
 
-                deleteAssignmentsStmt.setString(1, isbn);
-                deleteAssignmentsStmt.setString(2, chapterTitle);
-                int assignmentRows = deleteAssignmentsStmt.executeUpdate();
-
-                deleteChapterStmt.setString(1, isbn);
-                deleteChapterStmt.setString(2, chapterTitle);
-                int chapterRows = deleteChapterStmt.executeUpdate();
-
-                if (chapterRows == 0) {
-                    conn.rollback();
-                    System.out.println("No matching chapter found for ISBN " + isbn + " and title '" + chapterTitle + "'.");
-                    return;
-                }
-
-                conn.commit();
-                System.out.println("Delete completed. Works_on_chapters rows: " + assignmentRows +
-                        ", Chapters rows: " + chapterRows);
-
+            int rows = stmt.executeUpdate();
+            if (rows == 0) {
+                System.out.println("No matching chapter/book record found.");
+            } else {
+                System.out.println("Chapter detached successfully from book.");
                 showBookChaptersByIsbn(isbn);
-
-            } catch (SQLException e) {
-                conn.rollback();
-                System.out.println("Delete chapter failed: " + e.getMessage());
             }
         }
     }
@@ -888,10 +921,13 @@ public class PublicationDAO {
     // Helper: Show Chapters For Book
     // -------------------------------------------------------------------------
     private void showBookChaptersByIsbn(String isbn) throws SQLException {
-        String sql = "SELECT c.ISBN, c.title, c.topic, c.written_date " +
-                     "FROM Chapters c " +
-                     "WHERE c.ISBN = ? " +
-                     "ORDER BY c.title";
+        String sql = "SELECT p.PubID, p.Title AS publication_title, b.title AS book_title, " +
+                     "c.CID, c.ISBN, c.title AS chapter_title, c.topic, c.written_date " +
+                     "FROM Books b " +
+                     "JOIN Publications p ON b.PubID = p.PubID " +
+                     "LEFT JOIN Chapters c ON b.ISBN = c.ISBN " +
+                     "WHERE b.ISBN = ? " +
+                     "ORDER BY c.CID";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -900,16 +936,20 @@ public class PublicationDAO {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 System.out.println("\nBook Chapters");
-                System.out.printf("%-18s %-40s %-25s %-15s%n",
-                        "ISBN", "Chapter Title", "Topic", "Written Date");
-                System.out.println("-".repeat(105));
+                System.out.printf("%-10s %-30s %-35s %-8s %-18s %-35s %-20s %-15s%n",
+                        "PubID", "Publication", "Book Title", "CID", "ISBN", "Chapter Title", "Topic", "Written Date");
+                System.out.println("-".repeat(190));
 
                 boolean found = false;
                 while (rs.next()) {
                     found = true;
-                    System.out.printf("%-18s %-40s %-25s %-15s%n",
+                    System.out.printf("%-10s %-30s %-35s %-8s %-18s %-35s %-20s %-15s%n",
+                            rs.getString("PubID"),
+                            rs.getString("publication_title"),
+                            rs.getString("book_title"),
+                            rs.getString("CID"),
                             rs.getString("ISBN"),
-                            rs.getString("title"),
+                            rs.getString("chapter_title"),
                             rs.getString("topic"),
                             rs.getDate("written_date"));
                 }
@@ -921,7 +961,6 @@ public class PublicationDAO {
         }
     }
 
-    // legacy helper
     public void showPeriodical(String pubId) throws SQLException {
         showPeriodicalById(pubId);
     }
