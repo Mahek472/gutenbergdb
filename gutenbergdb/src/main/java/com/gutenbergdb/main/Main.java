@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 
 import com.gutenbergdb.dao.PublicationDAO;
 import com.gutenbergdb.dao.DistributorDAO;
+import com.gutenbergdb.dao.ProductionDAO;
 import com.gutenbergdb.dao.ReportDAO;
 
 public class Main {
@@ -17,6 +18,8 @@ public class Main {
 
             ReportDAO reportDAO = new ReportDAO();
 
+            ProductionDAO productionDAO = new ProductionDAO();
+
             Scanner scanner = new Scanner(System.in);
 
         while (true) {
@@ -24,7 +27,8 @@ public class Main {
             System.out.println("1. Publication Menu");
             System.out.println("2. Distributor Menu");
             System.out.println("3. Reports");
-            System.out.println("4. Exit");
+            System.out.println("4. Production Menu");
+            System.out.println("5. Exit");
             System.out.print("Enter your choice: ");
 
             try {
@@ -330,14 +334,220 @@ public class Main {
                         break;
                     }
 
-                    // ================= EXIT =================
+                    // ================= PRODUCTION MENU =================
                     case 4:
+                        while (true) {
+                            System.out.println("\nProduction Menu");
+                            System.out.println("1. Enter New Book Edition");
+                            System.out.println("2. Enter New Issue");
+                            System.out.println("3. Update Book Edition");
+                            System.out.println("4. Delete Book Edition");
+                            System.out.println("5. Delete Issue");
+                            System.out.println("6. Find Content By Topic");
+                            System.out.println("7. Find Content By Date Range");
+                            System.out.println("8. Find Content By Author");
+                            System.out.println("9. Enter Worker Payment");
+                            System.out.println("10. Update Payment Claimed");
+                            System.out.println("11. List Unclaimed Payments");
+                            System.out.println("12. Compare Two Issues");
+                            System.out.println("13. Back To Main Menu");
+                            System.out.print("Enter your choice: ");
+
+                            try {
+                                int productionChoice = Integer.parseInt(scanner.nextLine());
+
+                                switch (productionChoice) {
+                                    case 1: {
+                                        System.out.println("Enter existing ISBN:");
+                                        String isbn = scanner.nextLine().trim();
+
+                                        if (!productionDAO.isbnExists(isbn)) {
+                                            System.out.println("ISBN " + isbn + " was not found. Add the original book before creating a new edition.");
+                                            break;
+                                        }
+
+                                        System.out.println("Enter new PubID:");
+                                        int pubID = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter new edition title:");
+                                        String title = scanner.nextLine();
+
+                                        System.out.println("Enter new edition number:");
+                                        int edition = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter publication date (YYYY-MM-DD):");
+                                        String pubDate = scanner.nextLine().trim();
+
+                                        System.out.println("Enter written date (YYYY-MM-DD):");
+                                        String writtenDate = scanner.nextLine().trim();
+
+                                        System.out.println("Enter full text:");
+                                        String fullText = scanner.nextLine();
+
+                                        productionDAO.enterBookEdition(pubID, isbn, title, edition, pubDate, writtenDate, fullText);
+                                        break;
+                                    }
+
+                                    case 2: {
+                                        System.out.println("Enter IID:");
+                                        int iid = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter PubID:");
+                                        int pubID = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter subtitle:");
+                                        String subtitle = scanner.nextLine();
+
+                                        System.out.println("Enter publication date (YYYY-MM-DD):");
+                                        String pubDate = scanner.nextLine().trim();
+
+                                        productionDAO.enterIssue(iid, pubID, subtitle, pubDate);
+                                        break;
+                                    }
+
+                                    case 3: {
+                                        System.out.println("Enter PubID to update:");
+                                        int pubID = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter new ISBN (leave blank to keep current):");
+                                        String isbn = scanner.nextLine().trim();
+                                        if (isbn.isEmpty()) isbn = null;
+
+                                        System.out.println("Enter new edition number (leave blank to keep current):");
+                                        String editionInput = scanner.nextLine().trim();
+                                        Integer edition = editionInput.isEmpty() ? null : Integer.parseInt(editionInput);
+
+                                        System.out.println("Enter new publication date (leave blank to keep current):");
+                                        String pubDate = scanner.nextLine().trim();
+                                        if (pubDate.isEmpty()) pubDate = null;
+
+                                        productionDAO.updateBookEdition(pubID, isbn, edition, pubDate);
+                                        System.out.println("Book edition updated.");
+                                        break;
+                                    }
+
+                                    case 4: {
+                                        System.out.println("Enter PubID to delete:");
+                                        int pubID = Integer.parseInt(scanner.nextLine());
+
+                                        productionDAO.deleteBookEdition(pubID);
+                                        System.out.println("Book edition deleted.");
+                                        break;
+                                    }
+
+                                    case 5: {
+                                        System.out.println("Enter IID to delete:");
+                                        int iid = Integer.parseInt(scanner.nextLine());
+
+                                        productionDAO.deleteIssue(iid);
+                                        System.out.println("Issue deleted.");
+                                        break;
+                                    }
+
+                                    case 6: {
+                                        System.out.println("Enter topic:");
+                                        String topic = scanner.nextLine();
+
+                                        productionDAO.findByTopic(topic);
+                                        break;
+                                    }
+
+                                    case 7: {
+                                        System.out.println("Enter start date (YYYY-MM-DD):");
+                                        String start = scanner.nextLine().trim();
+
+                                        System.out.println("Enter end date (YYYY-MM-DD):");
+                                        String end = scanner.nextLine().trim();
+
+                                        productionDAO.findByDateRange(start, end);
+                                        break;
+                                    }
+
+                                    case 8: {
+                                        System.out.println("Enter author name:");
+                                        String name = scanner.nextLine();
+
+                                        productionDAO.findByAuthor(name);
+                                        break;
+                                    }
+
+                                    case 9: {
+                                        System.out.println("Enter PID:");
+                                        int pid = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter EID:");
+                                        int eid = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter payment amount:");
+                                        double amount = Double.parseDouble(scanner.nextLine());
+
+                                        System.out.println("Enter payment type:");
+                                        String type = scanner.nextLine();
+
+                                        System.out.println("Enter issue date (YYYY-MM-DD):");
+                                        String issueDate = scanner.nextLine().trim();
+
+                                        productionDAO.enterWorkerPayment(pid, eid, amount, type, issueDate);
+                                        break;
+                                    }
+
+                                    case 10: {
+                                        System.out.println("Enter PID:");
+                                        int pid = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter claim date (YYYY-MM-DD):");
+                                        String claimDate = scanner.nextLine().trim();
+
+                                        productionDAO.updatePaymentClaimed(pid, claimDate);
+                                        break;
+                                    }
+
+                                    case 11: {
+                                        System.out.println("Enter start date (YYYY-MM-DD):");
+                                        String start = scanner.nextLine().trim();
+
+                                        System.out.println("Enter end date (YYYY-MM-DD):");
+                                        String end = scanner.nextLine().trim();
+
+                                        productionDAO.listUnclaimedPayments(start, end);
+                                        break;
+                                    }
+
+                                    case 12: {
+                                        System.out.println("Enter first IID:");
+                                        int iid1 = Integer.parseInt(scanner.nextLine());
+
+                                        System.out.println("Enter second IID:");
+                                        int iid2 = Integer.parseInt(scanner.nextLine());
+
+                                        productionDAO.compareIssues(iid1, iid2);
+                                        break;
+                                    }
+
+                                    case 13:
+                                        break;
+
+                                    default:
+                                        System.out.println("Invalid choice. Please enter a number from 1 to 13.");
+                                }
+
+                                if (productionChoice == 13) {
+                                    break;
+                                }
+                            } catch (Exception e) {
+                                System.out.println("Operation failed: " + e.getMessage());
+                            }
+                        }
+                        break;
+
+                    // ================= EXIT =================
+                    case 5:
                         System.out.println("Exiting...");
                         scanner.close();
                         return;
 
                     default:
-                        System.out.println("Invalid choice.");
+                        System.out.println("Invalid choice. Please enter a number from 1 to 5.");
                 }
 
             } catch (Exception e) {

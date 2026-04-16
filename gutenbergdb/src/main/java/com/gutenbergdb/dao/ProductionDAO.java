@@ -380,7 +380,7 @@ public class ProductionDAO {
                      "WHERE wp.pay_claim_date IS NULL AND wp.pay_issue_date BETWEEN ? AND ?";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, start);
             pstmt.setString(2, end);
             ResultSet rs = pstmt.executeQuery();
