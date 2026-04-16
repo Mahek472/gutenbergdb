@@ -2,34 +2,33 @@ package com.gutenbergdb.dao;
 
 import com.gutenbergdb.util.DBConnection;
 import java.sql.*;
+import java.util.Scanner;
 
 public class ReportDAO {
 
+    private static final Scanner scanner = new Scanner(System.in);
+
     // =========================================================================
-    // EXISTING REPORTS
+    // EXISTING REPORTS (no user input)
     // =========================================================================
 
-    // FIXED: GROUP BY d.DID, p.PubID only (d.name and p.Title are functionally determined)
     public void reportPerDistributor() throws SQLException {
-        String sql = "SELECT " +
-                "    d.DID, " +
-                "    d.name AS distributor_name, " +
-                "    p.PubID, " +
-                "    p.Title AS publication_title, " +
-                "    SUM(copies) AS total_copies, " +
-                "    SUM(total_price) AS total_price " +
-                "FROM Orders o " +
-                "JOIN Distributors d ON o.DID = d.DID " +
-                "JOIN ( " +
-                "    SELECT ob.OID, b.PubID, ob.number_of_copies AS copies, ob.number_of_copies * ob.unit_price AS total_price " +
-                "    FROM Orders_books ob JOIN Books b ON ob.ISBN = b.ISBN " +
-                "    UNION ALL " +
-                "    SELECT oi.OID, i.PubID, oi.number_of_copies, oi.number_of_copies * oi.unit_price " +
-                "    FROM Orders_issues oi JOIN Issues i ON oi.IID = i.IID " +
-                ") combined ON o.OID = combined.OID " +
-                "JOIN Publications p ON combined.PubID = p.PubID " +
-                "GROUP BY d.DID, p.PubID " +
-                "ORDER BY d.DID, p.PubID";
+        String sql =
+            "SELECT d.DID, d.name AS distributor_name, " +
+            "       p.PubID, p.Title AS publication_title, " +
+            "       SUM(copies) AS total_copies, SUM(total_price) AS total_price " +
+            "FROM Orders o " +
+            "JOIN Distributors d ON o.DID = d.DID " +
+            "JOIN (" +
+            "    SELECT ob.OID, b.PubID, ob.number_of_copies AS copies, ob.number_of_copies * ob.unit_price AS total_price " +
+            "    FROM Orders_books ob JOIN Books b ON ob.ISBN = b.ISBN " +
+            "    UNION ALL " +
+            "    SELECT oi.OID, i.PubID, oi.number_of_copies, oi.number_of_copies * oi.unit_price " +
+            "    FROM Orders_issues oi JOIN Issues i ON oi.IID = i.IID " +
+            ") combined ON o.OID = combined.OID " +
+            "JOIN Publications p ON combined.PubID = p.PubID " +
+            "GROUP BY d.DID, p.PubID " +
+            "ORDER BY d.DID, p.PubID";
 
         try (Connection conn = DBConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -52,14 +51,13 @@ public class ReportDAO {
         }
     }
 
-    // FIXED: GROUP BY p.PubID, YEARWEEK only (p.Title is functionally determined)
     public void reportPerWeek() throws SQLException {
         String sql =
             "SELECT p.PubID, p.Title AS publication_title, " +
             "       YEARWEEK(o.date_ordered, 1) AS year_week, " +
             "       SUM(copies) AS total_copies, SUM(total_price) AS total_price " +
             "FROM Orders o " +
-            "JOIN ( " +
+            "JOIN (" +
             "   SELECT ob.OID, b.PubID, ob.number_of_copies AS copies, ob.number_of_copies * ob.unit_price AS total_price " +
             "   FROM Orders_books ob JOIN Books b ON ob.ISBN = b.ISBN " +
             "   UNION ALL " +
@@ -90,14 +88,13 @@ public class ReportDAO {
         }
     }
 
-    // FIXED: GROUP BY p.PubID, YEAR, MONTH only (p.Title is functionally determined)
     public void reportPerMonth() throws SQLException {
         String sql =
             "SELECT p.PubID, p.Title AS publication_title, " +
             "       YEAR(o.date_ordered) AS year, MONTH(o.date_ordered) AS month, " +
             "       SUM(copies) AS total_copies, SUM(total_price) AS total_price " +
             "FROM Orders o " +
-            "JOIN ( " +
+            "JOIN (" +
             "   SELECT ob.OID, b.PubID, ob.number_of_copies AS copies, ob.number_of_copies * ob.unit_price AS total_price " +
             "   FROM Orders_books ob JOIN Books b ON ob.ISBN = b.ISBN " +
             "   UNION ALL " +
@@ -236,7 +233,7 @@ public class ReportDAO {
             "       COALESCE(SUM(combined.total_price), 0) AS total_revenue " +
             "FROM Distributors d " +
             "JOIN Orders o ON d.DID = o.DID " +
-            "JOIN ( " +
+            "JOIN (" +
             "    SELECT OID, number_of_copies * unit_price AS total_price FROM Orders_books " +
             "    UNION ALL " +
             "    SELECT OID, number_of_copies * unit_price AS total_price FROM Orders_issues " +
@@ -266,7 +263,7 @@ public class ReportDAO {
             "       COALESCE(SUM(combined.total_price), 0) AS total_revenue " +
             "FROM Distributors d " +
             "JOIN Orders o ON d.DID = o.DID " +
-            "JOIN ( " +
+            "JOIN (" +
             "    SELECT OID, number_of_copies * unit_price AS total_price FROM Orders_books " +
             "    UNION ALL " +
             "    SELECT OID, number_of_copies * unit_price AS total_price FROM Orders_issues " +
@@ -323,19 +320,16 @@ public class ReportDAO {
             "SELECT work_type, SUM(total_payments) AS total_payments" +
             " FROM (" +
             "   SELECT 'Editorial Work' AS work_type, wp.amount AS total_payments" +
-            "   FROM Worker_Payments wp" +
-            "   JOIN Workers w ON wp.EID = w.EID" +
+            "   FROM Worker_Payments wp JOIN Workers w ON wp.EID = w.EID" +
             "   WHERE w.worker_type = 'Editor'" +
             "   UNION ALL" +
             "   SELECT 'Book Authorship', wp.amount" +
-            "   FROM Worker_Payments wp" +
-            "   JOIN Workers w ON wp.EID = w.EID" +
+            "   FROM Worker_Payments wp JOIN Workers w ON wp.EID = w.EID" +
             "   WHERE w.worker_type = 'Author'" +
             "     AND EXISTS (SELECT 1 FROM Works_on_chapters woc WHERE woc.EID = w.EID)" +
             "   UNION ALL" +
             "   SELECT 'Article Authorship', wp.amount" +
-            "   FROM Worker_Payments wp" +
-            "   JOIN Workers w ON wp.EID = w.EID" +
+            "   FROM Worker_Payments wp JOIN Workers w ON wp.EID = w.EID" +
             "   WHERE w.worker_type = 'Author'" +
             "     AND EXISTS (SELECT 1 FROM Works_on_articles woa WHERE woa.EID = w.EID)" +
             " ) combined" +
@@ -359,11 +353,17 @@ public class ReportDAO {
     }
 
     // =========================================================================
-    // NEW: USER-INPUT REPORTS
+    // NEW: USER-INPUT REPORTS — input collected inside each method
     // =========================================================================
 
-    // FIXED: GROUP BY d.DID, p.PubID only
-    public void reportPerDistributor(String did) throws SQLException {
+    /**
+     * Prompts for a DID, then reports copies and total price of each
+     * publication bought by that distributor.
+     */
+    public void reportPerDistributorByInput() throws SQLException {
+        System.out.print("\nEnter Distributor ID (e.g. D002): ");
+        String did = scanner.nextLine().trim();
+
         String sql =
             "SELECT d.DID, d.name AS distributor_name, " +
             "       p.PubID, p.Title AS publication_title, " +
@@ -387,14 +387,12 @@ public class ReportDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, did);
             try (ResultSet rs = ps.executeQuery()) {
                 System.out.println("\n===== Publications for Distributor: " + did + " =====");
                 System.out.printf("%-6s %-22s %-6s %-30s %-12s %-10s%n",
                     "DID", "Distributor", "PubID", "Title", "Copies", "Total Price");
                 System.out.println("-".repeat(92));
-
                 boolean any = false;
                 while (rs.next()) {
                     any = true;
@@ -411,8 +409,15 @@ public class ReportDAO {
         }
     }
 
-    // FIXED: GROUP BY p.PubID, YEARWEEK only
-    public void reportPerWeek(int year, int isoWeek) throws SQLException {
+    /**
+     * Prompts for a year and ISO week number, then reports copies and total
+     * price of each publication ordered that week.
+     */
+    public void reportPerWeekByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter ISO week number (e.g. 6): ");
+        int isoWeek = Integer.parseInt(scanner.nextLine().trim());
         String yearWeekVal = String.format("%04d%02d", year, isoWeek);
 
         String sql =
@@ -437,14 +442,12 @@ public class ReportDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, yearWeekVal);
             try (ResultSet rs = ps.executeQuery()) {
                 System.out.println("\n===== Publications Sold: Year " + year + ", ISO Week " + isoWeek + " =====");
                 System.out.printf("%-6s %-30s %-10s %-12s %-10s%n",
                     "PubID", "Title", "Year-Week", "Copies", "Total Price");
                 System.out.println("-".repeat(74));
-
                 boolean any = false;
                 while (rs.next()) {
                     any = true;
@@ -460,8 +463,16 @@ public class ReportDAO {
         }
     }
 
-    // FIXED: GROUP BY p.PubID, YEAR, MONTH only
-    public void reportPerMonth(int year, int month) throws SQLException {
+    /**
+     * Prompts for a year and month, then reports copies and total price of
+     * each publication ordered that month.
+     */
+    public void reportPerMonthByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter month (1-12): ");
+        int month = Integer.parseInt(scanner.nextLine().trim());
+
         String sql =
             "SELECT p.PubID, p.Title AS publication_title, " +
             "       YEAR(o.date_ordered) AS year, MONTH(o.date_ordered) AS month, " +
@@ -484,7 +495,6 @@ public class ReportDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setInt(1, year);
             ps.setInt(2, month);
             try (ResultSet rs = ps.executeQuery()) {
@@ -492,7 +502,6 @@ public class ReportDAO {
                 System.out.printf("%-6s %-30s %-6s %-6s %-12s %-10s%n",
                     "PubID", "Title", "Year", "Month", "Copies", "Total Price");
                 System.out.println("-".repeat(76));
-
                 boolean any = false;
                 while (rs.next()) {
                     any = true;
@@ -509,7 +518,15 @@ public class ReportDAO {
         }
     }
 
-    public void weeklyRevenueExpenses(int year, int isoWeek) throws SQLException {
+    /**
+     * Prompts for a year and ISO week, then reports revenue and expenses for
+     * that week.
+     */
+    public void weeklyRevenueExpensesByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter ISO week number (e.g. 6): ");
+        int isoWeek = Integer.parseInt(scanner.nextLine().trim());
         String yearWeekVal = String.format("%04d%02d", year, isoWeek);
 
         String sql =
@@ -525,25 +542,21 @@ public class ReportDAO {
             "   SELECT o.date_ordered, oi.number_of_copies * oi.unit_price, 0, 0" +
             "   FROM Orders o JOIN Orders_issues oi ON o.OID = oi.OID" +
             "   UNION ALL" +
-            "   SELECT o.date_ordered, 0, o.shipping_fee, 0" +
-            "   FROM Orders o" +
+            "   SELECT o.date_ordered, 0, o.shipping_fee, 0 FROM Orders o" +
             "   UNION ALL" +
-            "   SELECT wp.pay_issue_date, 0, 0, wp.amount" +
-            "   FROM Worker_Payments wp" +
+            "   SELECT wp.pay_issue_date, 0, 0, wp.amount FROM Worker_Payments wp" +
             " ) combined" +
             " WHERE YEARWEEK(period, 1) = ?" +
             " GROUP BY YEARWEEK(period, 1)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, yearWeekVal);
             try (ResultSet rs = ps.executeQuery()) {
                 System.out.println("\n===== Revenue & Expenses: Year " + year + ", ISO Week " + isoWeek + " =====");
                 System.out.printf("%-10s %-14s %-14s %-14s %-14s%n",
                     "Year-Week", "Revenue", "Shipping", "Salaries", "Total Expenses");
                 System.out.println("-".repeat(70));
-
                 if (rs.next()) {
                     System.out.printf("%-10s $%-13.2f $%-13.2f $%-13.2f $%-13.2f%n",
                         rs.getString("year_week"),
@@ -558,7 +571,16 @@ public class ReportDAO {
         }
     }
 
-    public void monthlyRevenueExpenses(int year, int month) throws SQLException {
+    /**
+     * Prompts for a year and month, then reports revenue and expenses for
+     * that month.
+     */
+    public void monthlyRevenueExpensesByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter month (1-12): ");
+        int month = Integer.parseInt(scanner.nextLine().trim());
+
         String sql =
             "SELECT YEAR(period) AS year, MONTH(period) AS month," +
             "       SUM(revenue)  AS total_revenue," +
@@ -572,18 +594,15 @@ public class ReportDAO {
             "   SELECT o.date_ordered, oi.number_of_copies * oi.unit_price, 0, 0" +
             "   FROM Orders o JOIN Orders_issues oi ON o.OID = oi.OID" +
             "   UNION ALL" +
-            "   SELECT o.date_ordered, 0, o.shipping_fee, 0" +
-            "   FROM Orders o" +
+            "   SELECT o.date_ordered, 0, o.shipping_fee, 0 FROM Orders o" +
             "   UNION ALL" +
-            "   SELECT wp.pay_issue_date, 0, 0, wp.amount" +
-            "   FROM Worker_Payments wp" +
+            "   SELECT wp.pay_issue_date, 0, 0, wp.amount FROM Worker_Payments wp" +
             " ) combined" +
             " WHERE YEAR(period) = ? AND MONTH(period) = ?" +
             " GROUP BY YEAR(period), MONTH(period)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setInt(1, year);
             ps.setInt(2, month);
             try (ResultSet rs = ps.executeQuery()) {
@@ -591,7 +610,6 @@ public class ReportDAO {
                 System.out.printf("%-6s %-6s %-14s %-14s %-14s %-14s%n",
                     "Year", "Month", "Revenue", "Shipping", "Salaries", "Total Expenses");
                 System.out.println("-".repeat(74));
-
                 if (rs.next()) {
                     System.out.printf("%-6d %-6d $%-13.2f $%-13.2f $%-13.2f $%-13.2f%n",
                         rs.getInt("year"),
@@ -607,7 +625,15 @@ public class ReportDAO {
         }
     }
 
-    public void paymentsPerWeek(int year, int isoWeek) throws SQLException {
+    /**
+     * Prompts for a year and ISO week, then reports worker payments issued
+     * that week.
+     */
+    public void paymentsPerWeekByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter ISO week number (e.g. 6): ");
+        int isoWeek = Integer.parseInt(scanner.nextLine().trim());
         String yearWeekVal = String.format("%04d%02d", year, isoWeek);
 
         String sql =
@@ -622,14 +648,12 @@ public class ReportDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, yearWeekVal);
             try (ResultSet rs = ps.executeQuery()) {
                 System.out.println("\n===== Worker Payments: Year " + year + ", ISO Week " + isoWeek + " =====");
                 System.out.printf("%-6s %-20s %-8s %-6s %-40s %-10s %-12s %-12s%n",
                     "EID", "Name", "Type", "PID", "Payment For", "Amount", "Issued", "Claimed");
                 System.out.println("-".repeat(120));
-
                 boolean any = false;
                 double total = 0;
                 while (rs.next()) {
@@ -638,12 +662,9 @@ public class ReportDAO {
                     total += amt;
                     String claimed = rs.getString("pay_claim_date");
                     System.out.printf("%-6s %-20s %-8s %-6s %-40s $%-9.2f %-12s %-12s%n",
-                        rs.getString("EID"),
-                        rs.getString("worker_name"),
-                        rs.getString("worker_type"),
-                        rs.getString("PID"),
-                        rs.getString("payment_type"),
-                        amt,
+                        rs.getString("EID"), rs.getString("worker_name"),
+                        rs.getString("worker_type"), rs.getString("PID"),
+                        rs.getString("payment_type"), amt,
                         rs.getString("pay_issue_date"),
                         claimed != null ? claimed : "Unclaimed");
                 }
@@ -653,7 +674,16 @@ public class ReportDAO {
         }
     }
 
-    public void paymentsPerMonth(int year, int month) throws SQLException {
+    /**
+     * Prompts for a year and month, then reports worker payments issued
+     * that month.
+     */
+    public void paymentsPerMonthByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter month (1-12): ");
+        int month = Integer.parseInt(scanner.nextLine().trim());
+
         String sql =
             "SELECT w.EID, w.worker_name, w.worker_type, " +
             "       wp.PID, wp.payment_type, wp.amount, " +
@@ -666,7 +696,6 @@ public class ReportDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setInt(1, year);
             ps.setInt(2, month);
             try (ResultSet rs = ps.executeQuery()) {
@@ -674,7 +703,6 @@ public class ReportDAO {
                 System.out.printf("%-6s %-20s %-8s %-6s %-40s %-10s %-12s %-12s%n",
                     "EID", "Name", "Type", "PID", "Payment For", "Amount", "Issued", "Claimed");
                 System.out.println("-".repeat(120));
-
                 boolean any = false;
                 double total = 0;
                 while (rs.next()) {
@@ -683,12 +711,9 @@ public class ReportDAO {
                     total += amt;
                     String claimed = rs.getString("pay_claim_date");
                     System.out.printf("%-6s %-20s %-8s %-6s %-40s $%-9.2f %-12s %-12s%n",
-                        rs.getString("EID"),
-                        rs.getString("worker_name"),
-                        rs.getString("worker_type"),
-                        rs.getString("PID"),
-                        rs.getString("payment_type"),
-                        amt,
+                        rs.getString("EID"), rs.getString("worker_name"),
+                        rs.getString("worker_type"), rs.getString("PID"),
+                        rs.getString("payment_type"), amt,
                         rs.getString("pay_issue_date"),
                         claimed != null ? claimed : "Unclaimed");
                 }
@@ -698,7 +723,15 @@ public class ReportDAO {
         }
     }
 
-    public void articlesIssuesPerWeek(int year, int isoWeek) throws SQLException {
+    /**
+     * Prompts for a year and ISO week, then reports issues published and
+     * articles written that week.
+     */
+    public void articlesIssuesPerWeekByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter ISO week number (e.g. 6): ");
+        int isoWeek = Integer.parseInt(scanner.nextLine().trim());
         String yearWeekVal = String.format("%04d%02d", year, isoWeek);
 
         System.out.println("\n===== Articles & Issues Published: Year " + year + ", ISO Week " + isoWeek + " =====");
@@ -711,7 +744,6 @@ public class ReportDAO {
             "JOIN Publications p  ON per.PubID = p.PubID " +
             "WHERE YEARWEEK(i.publication_date, 1) = ? " +
             "ORDER BY i.publication_date";
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(issSql)) {
             ps.setString(1, yearWeekVal);
@@ -735,7 +767,6 @@ public class ReportDAO {
             "JOIN Workers w            ON wa.EID = w.EID " +
             "WHERE YEARWEEK(a.written_date, 1) = ? " +
             "ORDER BY a.written_date";
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(artSql)) {
             ps.setString(1, yearWeekVal);
@@ -752,7 +783,16 @@ public class ReportDAO {
         }
     }
 
-    public void articlesIssuesPerMonth(int year, int month) throws SQLException {
+    /**
+     * Prompts for a year and month, then reports issues published and
+     * articles written that month.
+     */
+    public void articlesIssuesPerMonthByInput() throws SQLException {
+        System.out.print("\nEnter year (e.g. 2026): ");
+        int year = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Enter month (1-12): ");
+        int month = Integer.parseInt(scanner.nextLine().trim());
+
         System.out.printf("%n===== Articles & Issues Published: %04d-%02d =====%n", year, month);
 
         System.out.println("  Issues:");
@@ -763,7 +803,6 @@ public class ReportDAO {
             "JOIN Publications p  ON per.PubID = p.PubID " +
             "WHERE YEAR(i.publication_date) = ? AND MONTH(i.publication_date) = ? " +
             "ORDER BY i.publication_date";
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(issSql)) {
             ps.setInt(1, year);
@@ -788,7 +827,6 @@ public class ReportDAO {
             "JOIN Workers w            ON wa.EID = w.EID " +
             "WHERE YEAR(a.written_date) = ? AND MONTH(a.written_date) = ? " +
             "ORDER BY a.written_date";
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(artSql)) {
             ps.setInt(1, year);

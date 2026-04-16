@@ -30,6 +30,16 @@ public class DBConnection {
             USER = prop.getProperty("db.user");
             PASS = prop.getProperty("db.password");
 
+            try {
+                Class.forName("org.mariadb.jdbc.Driver");
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(
+                    "MariaDB JDBC driver not found on the runtime classpath. " +
+                    "If you are launching from Eclipse, refresh/import the project as a Maven project.",
+                    e
+                );
+            }
+
         } catch (IOException e) {
             throw new RuntimeException("Could not load db.properties: " + e.getMessage(), e);
         }

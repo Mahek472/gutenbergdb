@@ -1,43 +1,77 @@
 package com.gutenbergdb.dao;
 
+import com.gutenbergdb.util.DBConnection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DistributorDAO {
 
-    #private static final String URL      = "jdbc:mysql://localhost:3306/your_database";
-    #private static final String USERNAME = "x";
-    #private static final String PASSWORD = "y";
+    // -------------------------------------------------------------------------
+    // Helper: generate next DPID in DP### format
+    // -------------------------------------------------------------------------
+    private String generateNextDPID() throws SQLException {
+        String sql = "SELECT MAX(CAST(SUBSTRING(DPID, 3) AS UNSIGNED)) AS max_num FROM Distributor_payments WHERE DPID LIKE 'DP%'";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                Object maxNum = rs.getObject("max_num");
+                int nextNum = (maxNum == null) ? 1 : ((Number) maxNum).intValue() + 1;
+                return String.format("DP%03d", nextNum);
+            }
+            return "DP001";
+        }
+    }
 
     // -------------------------------------------------------------------------
-    // Helper: open a connection
+    // Helper: generate next OID in O### format
+    // -------------------------------------------------------------------------
+    private String generateNextOID() throws SQLException {
+        String sql = "SELECT MAX(CAST(SUBSTRING(OID, 2) AS UNSIGNED)) AS max_num FROM Orders WHERE OID LIKE 'O%'";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                Object maxNum = rs.getObject("max_num");
+                int nextNum = (maxNum == null) ? 1 : ((Number) maxNum).intValue() + 1;
+                return String.format("O%03d", nextNum);
+            }
+            return "O001";
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper: open a connection (uses DBConnection to load properties)
     // -------------------------------------------------------------------------
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USERNAME, PASSWORD);
+        return DBConnection.getConnection();
     }
 
     // -------------------------------------------------------------------------
     // 1. Enter a new distributor
     // -------------------------------------------------------------------------
-    public void enterNewDistributor(int iDID, String iname, String iphone_number,
-                                    String icategory, float ioutstanding_balance,
+    public void enterNewDistributor(String did_choice, String iname, String iphone_number,
+                                    String icategory,
                                     String iaddr, String icontact) throws SQLException {
 
         String sql = "INSERT INTO Distributors (DID, name, phone_number, category, " +
-                     "outstanding_balance, addr, contact) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                     "outstanding_balance, addr, contact, balance_as_of) " +
+                     "VALUES (?, ?, ?, ?, 0.0, ?, ?, CURDATE())";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, iDID);
+            stmt.setString(1, did_choice);
             stmt.setString(2, iname);
             stmt.setString(3, iphone_number);
             stmt.setString(4, icategory);
-            stmt.setFloat(5, ioutstanding_balance);
-            stmt.setString(6, iaddr);
-            stmt.setString(7, icontact);
+            stmt.setString(5, iaddr);
+            stmt.setString(6, icontact);
             stmt.executeUpdate();
         }
     }
@@ -45,9 +79,18 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 2. Update distributor info
     // -------------------------------------------------------------------------
-    public void updateDistributorInfo(int iDID, String iname, String iphone_number,
+    public void updateDistributorInfo(String did_choice, String iname, String iphone_number,
                                       String icategory, float ioutstanding_balance,
                                       String iaddr, String icontact) throws SQLException {
+
+        // Debug output
+        System.out.println("DEBUG: Updating distributor with DID=" + did_choice + 
+                          ", name=" + iname +
+                          ", phone=" + iphone_number +
+                          ", category=" + icategory +
+                          ", balance=" + ioutstanding_balance +
+                          ", addr=" + iaddr +
+                          ", contact=" + icontact);
 
         String sql = "UPDATE Distributors " +
                      "SET name = ?, phone_number = ?, category = ?, " +
@@ -63,84 +106,72 @@ public class DistributorDAO {
             stmt.setFloat(4, ioutstanding_balance);
             stmt.setString(5, iaddr);
             stmt.setString(6, icontact);
-            stmt.setInt(7, iDID);
-            stmt.executeUpdate();
+            stmt.setString(7, did_choice);
+
+            System.out.println("DEBUG: About to execute UPDATE...");
+            int rows = stmt.executeUpdate();
+            System.out.println("DEBUG: Update completed, rows affected: " + rows);
+        } catch (SQLException e) {
+            System.out.println("DEBUG: SQLException occurred: " + e.getMessage());
+            throw e;
         }
     }
 
     // -------------------------------------------------------------------------
     // 3. Delete a distributor
     // -------------------------------------------------------------------------
-    public void deleteDistributor(int iDID) throws SQLException {
+    public void deleteDistributor(String did_choice) throws SQLException {
 
         String sql = "DELETE FROM Distributors WHERE DID = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, iDID);
+            stmt.setString(1, did_choice);
             stmt.executeUpdate();
         }
     }
 
     // -------------------------------------------------------------------------
     // 4. Input a single order  (multi-statement transaction)
-    //    NOTE: iOID is auto-generated here via LAST_INSERT_ID() to avoid
-    //    the undefined iOID variable that was in the original code.
+    //    OID is generated in O### format to match existing data.
+    //    For books: use iIdentifier as ISBN; for issues: use iIdentifier as IID
     // -------------------------------------------------------------------------
-    public void inputOrder(int iDID, int iPubID, String idate_ordered,
-                           float ishipping_fee, String idate_due,
-                           float iunit_price, int inumber_of_copies, boolean is_book) throws SQLException {
+    public void inputOrder(String iDID, String iIdentifier, String idate_ordered,
+                           float ishipping_fee, float iunit_price, int inumber_of_copies, 
+                           boolean is_book) throws SQLException {
 
-        String sqlOrder = "INSERT INTO Orders (date_ordered, shipping_fee, date_due, is_produced) " +
-                          "VALUES (?, ?, ?, FALSE)";
-        String sqlPlaces = "INSERT INTO Places (OID, DID) VALUES (?, ?)";
-        string sqlOrderStuff = "";
+        // Generate next OID in O### format
+        String generatedOID = generateNextOID();
+
+        String sqlOrder = "INSERT INTO Orders (OID, date_ordered, shipping_fee, DID) " +
+                          "VALUES (?, ?, ?, ?)";
+        String sqlOrderStuff;
         if (is_book) {
-            String sqlOrderBooks = "INSERT INTO Orders_books (OID, PubID, unit_price, number_of_copies) " +
-                               "VALUES (?, ?, ?, ?)";
-            sqlOrderStuff = sqlOrderBooks;
+            sqlOrderStuff = "INSERT INTO Orders_books (OID, ISBN, unit_price, number_of_copies) " +
+                            "VALUES (?, ?, ?, ?)";
         }
         else {
-            String sqlOrderIssues = "INSERT INTO Orders_issues (unit_price, number_of_copies, OID, PubID) " +
-                                "VALUES (?, ?, ?, ?)";
-            sqlOrderStuff = sqlOrderIssues;
+            sqlOrderStuff = "INSERT INTO Orders_issues (OID, IID, unit_price, number_of_copies) " +
+                            "VALUES (?, ?, ?, ?)";
         }
-        
-
-
-        
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false); // begin transaction
             try {
-                int generatedOID;
-
-                // Insert into Orders and retrieve the generated OID
-                try (PreparedStatement stmt = conn.prepareStatement(sqlOrder,
-                                             Statement.RETURN_GENERATED_KEYS)) {
-                    stmt.setString(1, idate_ordered);
-                    stmt.setFloat(2, ishipping_fee);
-                    stmt.setString(3, idate_due);
-                    stmt.executeUpdate();
-
-                    try (ResultSet keys = stmt.getGeneratedKeys()) {
-                        if (!keys.next()) throw new SQLException("Failed to retrieve generated OID.");
-                        generatedOID = keys.getInt(1);
-                    }
-                }
-
-                // Insert into Places
-                try (PreparedStatement stmt = conn.prepareStatement(sqlPlaces)) {
-                    stmt.setInt(1, generatedOID);
-                    stmt.setInt(2, iDID);
+                // Insert into Orders
+                try (PreparedStatement stmt = conn.prepareStatement(sqlOrder)) {
+                    stmt.setString(1, generatedOID);
+                    stmt.setString(2, idate_ordered);
+                    stmt.setFloat(3, ishipping_fee);
+                    stmt.setString(4, iDID);
                     stmt.executeUpdate();
                 }
 
-                // Insert into Orders_books
+                // Insert into Orders_books or Orders_issues
                 try (PreparedStatement stmt = conn.prepareStatement(sqlOrderStuff)) {
-                    stmt.setInt(1, generatedOID);
-                    stmt.setInt(2, iPubID);
+                    stmt.setString(1, generatedOID);
+                    stmt.setString(2, iIdentifier);  // ISBN or IID
                     stmt.setFloat(3, iunit_price);
                     stmt.setInt(4, inumber_of_copies);
                     stmt.executeUpdate();
@@ -157,50 +188,20 @@ public class DistributorDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Input multiple orders
-    //    Callers must now supply full order details for each order.
-    //    Orders are passed in as a simple inner class / record.
-    // -------------------------------------------------------------------------
-    public static class OrderRequest {
-        public final int    DID;
-        public final int    PubID;
-        public final String date_ordered;
-        public final float  shipping_fee;
-        public final String date_due;
-        public final float  unit_price;
-        public final int    number_of_copies;
-
-        public OrderRequest(int DID, int PubID, String date_ordered, float shipping_fee,
-                            String date_due, float unit_price, int number_of_copies) {
-            this.DID             = DID;
-            this.PubID           = PubID;
-            this.date_ordered    = date_ordered;
-            this.shipping_fee    = shipping_fee;
-            this.date_due        = date_due;
-            this.unit_price      = unit_price;
-            this.number_of_copies = number_of_copies;
-        }
-    }
-
-    public void inputMultipleOrders(List<OrderRequest> orders) throws SQLException {
-        for (OrderRequest order : orders) {
-            inputOrder(order.DID, order.PubID, order.date_ordered,
-                       order.shipping_fee, order.date_due,
-                       order.unit_price, order.number_of_copies);
-        }
-    }
 
     // -------------------------------------------------------------------------
     // 6. Bill a distributor  (adds to outstanding_balance)
-    //    iDBID is auto-generated; retrieved via RETURN_GENERATED_KEYS.
+    //    DPID is generated in DP### format to match existing data.
+    //    Distributor_payments now has DID directly (no Make table).
     // -------------------------------------------------------------------------
-    public void billDistributor(int iDID, float ipayment_amount,
-                                String ipayment_date) throws SQLException {
+    public void billDistributor(String did_choice, float ipayment_amount,
+                                String payment_date) throws SQLException {
 
-        String sqlPayment = "INSERT INTO Distributor_payments (payment_date, payment_amount) " +
-                            "VALUES (?, ?)";
-        String sqlMake    = "INSERT INTO Make (DBID, DID) VALUES (?, ?)";
+        // Generate next DPID in DP### format
+        String generatedDPID = generateNextDPID();
+
+        String sqlPayment = "INSERT INTO Distributor_payments (DPID, payment_amount, payment_date, DID) " +
+                            "VALUES (?, ?, ?, ?)";
         String sqlUpdate  = "UPDATE Distributors " +
                             "SET outstanding_balance = outstanding_balance + ? " +
                             "WHERE DID = ?";
@@ -208,29 +209,17 @@ public class DistributorDAO {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
-                int generatedDBID;
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlPayment,
-                                             Statement.RETURN_GENERATED_KEYS)) {
-                    stmt.setString(1, ipayment_date);
+                try (PreparedStatement stmt = conn.prepareStatement(sqlPayment)) {
+                    stmt.setString(1, generatedDPID);
                     stmt.setFloat(2, ipayment_amount);
-                    stmt.executeUpdate();
-
-                    try (ResultSet keys = stmt.getGeneratedKeys()) {
-                        if (!keys.next()) throw new SQLException("Failed to retrieve generated DBID.");
-                        generatedDBID = keys.getInt(1);
-                    }
-                }
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlMake)) {
-                    stmt.setInt(1, generatedDBID);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(3, payment_date);
+                    stmt.setString(4, did_choice);
                     stmt.executeUpdate();
                 }
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
                     stmt.setFloat(1, ipayment_amount);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, did_choice);
                     stmt.executeUpdate();
                 }
 
@@ -248,12 +237,14 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 7. Change distributor balance  (subtracts from outstanding_balance)
     // -------------------------------------------------------------------------
-    public void changeDistributorBalance(int iDID, float ipayment_amount,
-                                         String ipayment_date) throws SQLException {
+    public void changeDistributorBalance(String did_choice, float ipayment_amount,
+                                         String payment_date) throws SQLException {
 
-        String sqlPayment = "INSERT INTO Distributor_payments (payment_date, payment_amount) " +
-                            "VALUES (?, ?)";
-        String sqlMake    = "INSERT INTO Make (DBID, DID) VALUES (?, ?)";
+        // Generate next DPID in DP### format
+        String generatedDPID = generateNextDPID();
+
+        String sqlPayment = "INSERT INTO Distributor_payments (DPID, payment_amount, payment_date, DID) " +
+                            "VALUES (?, ?, ?, ?)";
         String sqlUpdate  = "UPDATE Distributors " +
                             "SET outstanding_balance = outstanding_balance - ? " +
                             "WHERE DID = ?";
@@ -261,29 +252,17 @@ public class DistributorDAO {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
-                int generatedDBID;
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlPayment,
-                                             Statement.RETURN_GENERATED_KEYS)) {
-                    stmt.setString(1, ipayment_date);
+                try (PreparedStatement stmt = conn.prepareStatement(sqlPayment)) {
+                    stmt.setString(1, generatedDPID);
                     stmt.setFloat(2, ipayment_amount);
-                    stmt.executeUpdate();
-
-                    try (ResultSet keys = stmt.getGeneratedKeys()) {
-                        if (!keys.next()) throw new SQLException("Failed to retrieve generated DBID.");
-                        generatedDBID = keys.getInt(1);
-                    }
-                }
-
-                try (PreparedStatement stmt = conn.prepareStatement(sqlMake)) {
-                    stmt.setInt(1, generatedDBID);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(3, payment_date);
+                    stmt.setString(4, did_choice);
                     stmt.executeUpdate();
                 }
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
                     stmt.setFloat(1, ipayment_amount);
-                    stmt.setInt(2, iDID);
+                    stmt.setString(2, did_choice);
                     stmt.executeUpdate();
                 }
 
@@ -306,15 +285,14 @@ public class DistributorDAO {
         String sql = "SELECT d.DID, d.name, d.outstanding_balance, " +
                      "COALESCE(SUM(dp.payment_amount), 0) AS total_payments " +
                      "FROM Distributors d " +
-                     "LEFT JOIN Make m ON d.DID = m.DID " +
-                     "LEFT JOIN Distributor_payments dp ON m.DBID = dp.DBID " +
+                     "LEFT JOIN Distributor_payments dp ON d.DID = dp.DID " +
                      "GROUP BY d.DID, d.name, d.outstanding_balance " +
                      "HAVING d.outstanding_balance != COALESCE(SUM(dp.payment_amount), 0)";
 
         StringBuilder result = new StringBuilder();
-        result.append(String.format("%-6s %-20s %-20s %-20s%n",
+        result.append(String.format("%-10s %-20s %-20s %-20s%n",
                       "DID", "Name", "Outstanding Balance", "Total Payments"));
-        result.append("-".repeat(68)).append("\n");
+        result.append("-".repeat(70)).append("\n");
 
         try (Connection conn        = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -322,8 +300,8 @@ public class DistributorDAO {
 
             List<String> rows = new ArrayList<>();
             while (rs.next()) {
-                rows.add(String.format("%-6d %-20s %-20.2f %-20.2f%n",
-                          rs.getInt("DID"),
+                rows.add(String.format("%-10s %-20s %-20.2f %-20.2f%n",
+                          rs.getString("DID"),
                           rs.getString("name"),
                           rs.getFloat("outstanding_balance"),
                           rs.getFloat("total_payments")));
@@ -350,21 +328,21 @@ public class DistributorDAO {
                      "WHERE addr LIKE ? AND category = ?";
 
         StringBuilder result = new StringBuilder();
-        result.append(String.format("%-6s %-20s %-15s %-15s %-20s %-30s %-20s%n",
+        result.append(String.format("%-10s %-20s %-15s %-15s %-20s %-30s %-20s%n",
                       "DID", "Name", "Phone", "Category", "Balance", "Address", "Contact"));
-        result.append("-".repeat(128)).append("\n");
+        result.append("-".repeat(130)).append("\n");
 
         try (Connection conn        = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, "%" + location + "%"); // LIKE wildcard applied here, not in SQL string
+            stmt.setString(1, "%" + location + "%");
             stmt.setString(2, type);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 List<String> rows = new ArrayList<>();
                 while (rs.next()) {
-                    rows.add(String.format("%-6d %-20s %-15s %-15s %-20.2f %-30s %-20s%n",
-                              rs.getInt("DID"),
+                    rows.add(String.format("%-10s %-20s %-15s %-15s %-20.2f %-30s %-20s%n",
+                              rs.getString("DID"),
                               rs.getString("name"),
                               rs.getString("phone_number"),
                               rs.getString("category"),
@@ -383,5 +361,11 @@ public class DistributorDAO {
         }
 
         return result.toString();
+    }
+
+    public void inputOrder(int did_choice, int pid_choice, String date_ordered, float shipping_fee, String date_due,
+            float unit_price, int num_copies, boolean is_book) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'inputOrder'");
     }
 }

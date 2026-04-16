@@ -112,7 +112,7 @@ public class GutenBergDB_DemoData {
             // CHANGED: added CID as primary key, ISBN becomes a regular FK
             "CREATE TABLE Chapters (" +
                 "CID VARCHAR(10) NOT NULL, " +
-                "ISBN VARCHAR(20) NOT NULL, " +
+                "ISBN VARCHAR(20) NULL, " +
                 "title VARCHAR(255) NOT NULL, " +
                 "topic VARCHAR(100) NOT NULL, " +
                 "written_date DATE NOT NULL, " +
@@ -154,7 +154,7 @@ public class GutenBergDB_DemoData {
                 "topic VARCHAR(100) NOT NULL, " +
                 "written_date DATE NOT NULL, " +
                 "full_text TEXT, " +
-                "IID VARCHAR(10) NOT NULL, " +
+                "IID VARCHAR(10) NULL," +
                 "PRIMARY KEY (AID), " +
                 "FOREIGN KEY (IID) REFERENCES Issues(IID)" +
             ") ENGINE=InnoDB",

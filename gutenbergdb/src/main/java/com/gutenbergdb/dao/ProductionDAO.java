@@ -11,38 +11,164 @@ public class ProductionDAO {
 
     // --- 1. Enter a new book edition or new issue ---
 
-    public void enterBookEdition(int pubID, String title, String topic, String isbn, int edition, String pubDate, String writtenDate, String fullText) throws SQLException {
-        String pubSQL = "INSERT INTO Publications (PubID, Title, periodicity, topic) VALUES (?, ?, NULL, ?)";
-        String bookSQL = "INSERT INTO Books (PubID, ISBN, full_text, edition_number, publication_date, written_date) VALUES (?, ?, ?, ?, ?, ?)";
+    /**
+     * Supports an ISBN-first workflow by letting callers verify that a book
+     * already exists before collecting the new edition details.
+     */
+    public boolean isbnExists(String isbn) throws SQLException {
+        try (Connection conn = DBConnection.getConnection()) {
+            return isbnExists(conn, isbn);
+        }
+    }
 
+    /**
+     * Adds a new edition for an existing ISBN and reuses the existing topic when
+     * the caller only wants to provide the new edition title and number.
+     */
+    public void enterBookEdition(int pubID, String isbn, String title, int edition, String pubDate, String writtenDate, String fullText) throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
-            try (PreparedStatement psPub = conn.prepareStatement(pubSQL);
-                 PreparedStatement psBook = conn.prepareStatement(bookSQL)) {
-                
-                psPub.setInt(1, pubID);
-                psPub.setString(2, title);
-                psPub.setString(3, topic);
-                psPub.executeUpdate();
+            try {
+                if (!isbnExists(conn, isbn)) {
+                    throw new SQLException("ISBN " + isbn + " does not exist. Add the original book before adding a new edition.");
+                }
 
-                psBook.setInt(1, pubID);
-                psBook.setString(2, isbn);
-                psBook.setString(3, fullText);
-                psBook.setInt(4, edition);
-                psBook.setString(5, pubDate);
-                psBook.setString(6, writtenDate);
-                psBook.executeUpdate();
-
+                String existingTopic = findTopicByIsbn(conn, isbn);
+                insertBookEdition(conn, pubID, title, existingTopic, isbn, edition, pubDate, writtenDate, fullText);
                 conn.commit();
-                System.out.println("\n--- New Book Edition Entered ---");
-                System.out.printf("PubID: %d | Title: %s | Topic: %s | ISBN: %s%n", pubID, title, topic, isbn);
-                System.out.printf("Edition: %d | Pub Date: %s | Written Date: %s%n", edition, pubDate, writtenDate);
-                System.out.println("Full Text (partial): " + (fullText.length() > 50 ? fullText.substring(0, 50) + "..." : fullText));
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
             }
         }
+    }
+
+    public void enterBookEdition(int pubID, String title, String topic, String isbn, int edition, String pubDate, String writtenDate, String fullText) throws SQLException {
+        try (Connection conn = DBConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                if (!isbnExists(conn, isbn)) {
+                    throw new SQLException("ISBN " + isbn + " does not exist. Add the original book before adding a new edition.");
+                }
+
+                String existingTopic = findTopicByIsbn(conn, isbn);
+                String resolvedTopic = hasText(topic) ? topic : existingTopic;
+                insertBookEdition(conn, pubID, title, resolvedTopic, isbn, edition, pubDate, writtenDate, fullText);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
+    private void insertBookEdition(Connection conn, int pubID, String title, String topic, String isbn, int edition, String pubDate, String writtenDate, String fullText) throws SQLException {
+        String pubSQL = "INSERT INTO Publications (PubID, Title, periodicity, topic) VALUES (?, ?, NULL, ?)";
+        String bookSQL = "INSERT INTO Books (PubID, ISBN, full_text, edition_number, publication_date, written_date) VALUES (?, ?, ?, ?, ?, ?)";
+
+        validateNewEdition(conn, pubID, isbn, edition);
+
+        try (PreparedStatement psPub = conn.prepareStatement(pubSQL);
+             PreparedStatement psBook = conn.prepareStatement(bookSQL)) {
+
+            psPub.setInt(1, pubID);
+            psPub.setString(2, title);
+            if (hasText(topic)) {
+                psPub.setString(3, topic);
+            } else {
+                psPub.setNull(3, Types.VARCHAR);
+            }
+            psPub.executeUpdate();
+
+            psBook.setInt(1, pubID);
+            psBook.setString(2, isbn);
+            psBook.setString(3, fullText);
+            psBook.setInt(4, edition);
+            psBook.setString(5, emptyToNull(pubDate));
+            psBook.setString(6, emptyToNull(writtenDate));
+            psBook.executeUpdate();
+
+            System.out.println("\n--- New Book Edition Entered ---");
+            System.out.printf("Existing ISBN Verified: %s%n", isbn);
+            System.out.printf("PubID: %d | Title: %s | Topic: %s%n", pubID, title, topic);
+            System.out.printf("Edition: %d | Pub Date: %s | Written Date: %s%n", edition, pubDate, writtenDate);
+            System.out.println("Full Text (partial): " + previewText(fullText));
+        }
+    }
+
+    private void validateNewEdition(Connection conn, int pubID, String isbn, int edition) throws SQLException {
+        if (publicationExists(conn, pubID)) {
+            throw new SQLException("Publication with PubID " + pubID + " already exists.");
+        }
+
+        if (editionExists(conn, isbn, edition)) {
+            throw new SQLException("Edition " + edition + " already exists for ISBN " + isbn + ".");
+        }
+    }
+
+    private boolean publicationExists(Connection conn, int pubID) throws SQLException {
+        String sql = "SELECT 1 FROM Publications WHERE PubID = ? LIMIT 1";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, pubID);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private boolean isbnExists(Connection conn, String isbn) throws SQLException {
+        String sql = "SELECT 1 FROM Books WHERE ISBN = ? LIMIT 1";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, isbn);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private boolean editionExists(Connection conn, String isbn, int edition) throws SQLException {
+        String sql = "SELECT 1 FROM Books WHERE ISBN = ? AND edition_number = ? LIMIT 1";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, isbn);
+            pstmt.setInt(2, edition);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private String findTopicByIsbn(Connection conn, String isbn) throws SQLException {
+        String sql = "SELECT p.topic FROM Books b JOIN Publications p ON p.PubID = b.PubID WHERE b.ISBN = ? LIMIT 1";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, isbn);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("topic");
+                }
+                return null;
+            }
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private String emptyToNull(String value) {
+        return hasText(value) ? value.trim() : null;
+    }
+
+    private String previewText(String value) {
+        String safeValue = value == null ? "" : value;
+        return safeValue.length() > 50 ? safeValue.substring(0, 50) + "..." : safeValue;
     }
 
     public void enterIssue(int iid, int pubID, String subtitle, String pubDate) throws SQLException {
@@ -254,7 +380,7 @@ public class ProductionDAO {
                      "WHERE wp.pay_claim_date IS NULL AND wp.pay_issue_date BETWEEN ? AND ?";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, start);
             pstmt.setString(2, end);
             ResultSet rs = pstmt.executeQuery();
