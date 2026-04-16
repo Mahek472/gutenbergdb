@@ -55,24 +55,23 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 1. Enter a new distributor
     // -------------------------------------------------------------------------
-    public void enterNewDistributor(int did_choice, String iname, String iphone_number,
-                                    String icategory, float ioutstanding_balance,
+    public void enterNewDistributor(String did_choice, String iname, String iphone_number,
+                                    String icategory,
                                     String iaddr, String icontact) throws SQLException {
 
         String sql = "INSERT INTO Distributors (DID, name, phone_number, category, " +
                      "outstanding_balance, addr, contact, balance_as_of) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())";
+                     "VALUES (?, ?, ?, ?, 0.0, ?, ?, CURDATE())";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setLong(1, did_choice);
+            stmt.setString(1, did_choice);
             stmt.setString(2, iname);
             stmt.setString(3, iphone_number);
             stmt.setString(4, icategory);
-            stmt.setFloat(5, ioutstanding_balance);
-            stmt.setString(6, iaddr);
-            stmt.setString(7, icontact);
+            stmt.setString(5, iaddr);
+            stmt.setString(6, icontact);
             stmt.executeUpdate();
         }
     }
@@ -80,7 +79,7 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 2. Update distributor info
     // -------------------------------------------------------------------------
-    public void updateDistributorInfo(int did_choice, String iname, String iphone_number,
+    public void updateDistributorInfo(String did_choice, String iname, String iphone_number,
                                       String icategory, float ioutstanding_balance,
                                       String iaddr, String icontact) throws SQLException {
 
@@ -107,8 +106,8 @@ public class DistributorDAO {
             stmt.setFloat(4, ioutstanding_balance);
             stmt.setString(5, iaddr);
             stmt.setString(6, icontact);
-            stmt.setLong(7, did_choice);
-            
+            stmt.setString(7, did_choice);
+
             System.out.println("DEBUG: About to execute UPDATE...");
             int rows = stmt.executeUpdate();
             System.out.println("DEBUG: Update completed, rows affected: " + rows);
@@ -121,14 +120,14 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 3. Delete a distributor
     // -------------------------------------------------------------------------
-    public void deleteDistributor(int did_choice) throws SQLException {
+    public void deleteDistributor(String did_choice) throws SQLException {
 
         String sql = "DELETE FROM Distributors WHERE DID = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setLong(1, did_choice);
+            stmt.setString(1, did_choice);
             stmt.executeUpdate();
         }
     }
@@ -195,8 +194,8 @@ public class DistributorDAO {
     //    DPID is generated in DP### format to match existing data.
     //    Distributor_payments now has DID directly (no Make table).
     // -------------------------------------------------------------------------
-    public void billDistributor(int did_choice, float ipayment_amount,
-                                int payment_date) throws SQLException {
+    public void billDistributor(String did_choice, float ipayment_amount,
+                                String payment_date) throws SQLException {
 
         // Generate next DPID in DP### format
         String generatedDPID = generateNextDPID();
@@ -213,14 +212,14 @@ public class DistributorDAO {
                 try (PreparedStatement stmt = conn.prepareStatement(sqlPayment)) {
                     stmt.setString(1, generatedDPID);
                     stmt.setFloat(2, ipayment_amount);
-                    stmt.setLong(3, payment_date);
-                    stmt.setLong(4, did_choice);
+                    stmt.setString(3, payment_date);
+                    stmt.setString(4, did_choice);
                     stmt.executeUpdate();
                 }
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
                     stmt.setFloat(1, ipayment_amount);
-                    stmt.setLong(2, did_choice);
+                    stmt.setString(2, did_choice);
                     stmt.executeUpdate();
                 }
 
@@ -238,8 +237,8 @@ public class DistributorDAO {
     // -------------------------------------------------------------------------
     // 7. Change distributor balance  (subtracts from outstanding_balance)
     // -------------------------------------------------------------------------
-    public void changeDistributorBalance(int did_choice, float ipayment_amount,
-                                         int payment_date) throws SQLException {
+    public void changeDistributorBalance(String did_choice, float ipayment_amount,
+                                         String payment_date) throws SQLException {
 
         // Generate next DPID in DP### format
         String generatedDPID = generateNextDPID();
@@ -256,14 +255,14 @@ public class DistributorDAO {
                 try (PreparedStatement stmt = conn.prepareStatement(sqlPayment)) {
                     stmt.setString(1, generatedDPID);
                     stmt.setFloat(2, ipayment_amount);
-                    stmt.setLong(3, payment_date);
-                    stmt.setLong(4, did_choice);
+                    stmt.setString(3, payment_date);
+                    stmt.setString(4, did_choice);
                     stmt.executeUpdate();
                 }
 
                 try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
                     stmt.setFloat(1, ipayment_amount);
-                    stmt.setLong(2, did_choice);
+                    stmt.setString(2, did_choice);
                     stmt.executeUpdate();
                 }
 

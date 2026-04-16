@@ -98,15 +98,15 @@ public class Main {
                             System.out.println("6. Bill Distributor");
                             System.out.println("7. Change Distributor Balance");
                             System.out.println("8. Identify Non-Matching Distributor Balances");
-                            System.out.println("9. Identify Distributors by location/type");
+                            System.out.println("9. Identify Distributors of certain type or location");
                             System.out.println("10. Back To Main Menu");
+                            System.out.print("Enter your choice: ");
 
                             int distChoice = Integer.parseInt(scanner.nextLine());
                             DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
                             DateTimeFormatter dbFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
                             try {
                                 switch (distChoice) {
-
                                     case 1: {
                                         System.out.println("Enter Distributor ID:");
                                         String did_choice = scanner.nextLine();
@@ -222,7 +222,7 @@ public class Main {
 
                                     case 5: {
                                         System.out.println("Enter number of orders:");
-                                        int num = Integer.parseInt(scanner.nextLine());
+                                        int num_orders = Integer.parseInt(scanner.nextLine());
 
                                     for(int j = 0; j < num_orders; j++){
                                         System.out.println("Order " + (j+1) + ":");
@@ -266,17 +266,17 @@ public class Main {
                                     float payment_amount = Float.parseFloat(scanner.nextLine());
 
                                     System.out.println("Enter payment date (MM/DD/YYYY):");
-                                    
+
                                     String payment_date = dbFormatter.format(LocalDate.parse(scanner.nextLine(), inputFormatter));
 
                                     distributorDAO.billDistributor(did_choice, payment_amount, payment_date);
                                     break;
-                                    
+
 
                                 case 7: {
                                     System.out.println("Enter Distributor ID:");
                                     String idid_choice = scanner.nextLine();
-                                    
+
                                     System.out.println("Enter payment amount:");
                                     float ipayment_amount = Float.parseFloat(scanner.nextLine());
 
@@ -304,22 +304,24 @@ public class Main {
                                     break;
                                 }
 
-                                    case 10:
+                                    case 10: {
                                         break;
+                                    }
 
-                                    default:
-                                        System.out.println("Invalid choice.");
+                                    default: {
+                                        System.out.println("Invalid choice. Please enter a number from 1 to 10.");
+                                    }
                                 }
 
-                                if (distChoice == 10) break;
-
+                                if (distChoice == 10) {
+                                    break;
+                                }
                             } catch (Exception e) {
-                                System.out.println("Error: " + e.getMessage());
+                                System.err.println("Error: " + e.getMessage());
                             }
                         }
                         break;
                     }
-
                     // ================= REPORTS =================
                     case 3: {
                         reportDAO.reportPerDistributor();
