@@ -75,95 +75,84 @@ public class PublicationDAO {
     // 2. Insert New Book
     // -------------------------------------------------------------------------
     public void insertNewBook() throws SQLException {
-        System.out.println("\nInsert New Book");
+    System.out.println("\nInsert New Book");
 
-        System.out.print("Enter PubID (e.g. PUB004): ");
-        String pubId = scanner.nextLine().trim();
+    System.out.print("Enter PubID (e.g. PUB004): ");
+    String pubId = scanner.nextLine().trim();
 
-        System.out.print("Enter Publication Title: ");
-        String publicationTitle = scanner.nextLine();
+    System.out.print("Enter Publication Title: ");
+    String publicationTitle = scanner.nextLine();
 
-        System.out.print("Enter Topic: ");
-        String topic = scanner.nextLine();
+    System.out.print("Enter Topic: ");
+    String topic = scanner.nextLine();
 
-        System.out.print("Enter ISBN: ");
-        String isbn = scanner.nextLine().trim();
+    System.out.print("Enter ISBN: ");
+    String isbn = scanner.nextLine().trim();
 
-        System.out.print("Enter Book Title: ");
-        String bookTitle = scanner.nextLine();
+    System.out.print("Enter Book Title: ");
+    String bookTitle = scanner.nextLine();
 
-        System.out.print("Enter Full Text (or leave blank for NULL): ");
-        String fullText = scanner.nextLine();
+    System.out.print("Enter Edition Number: ");
+    int editionNumber = Integer.parseInt(scanner.nextLine());
 
-        System.out.print("Enter Edition Number: ");
-        int editionNumber = Integer.parseInt(scanner.nextLine());
+    System.out.print("Enter Publication Date (YYYY-MM-DD): ");
+    String publicationDate = scanner.nextLine();
 
-        System.out.print("Enter Publication Date (YYYY-MM-DD): ");
-        String publicationDate = scanner.nextLine();
+    String checkPubSql = "SELECT COUNT(*) FROM Publications WHERE PubID = ?";
+    String checkBookSql = "SELECT COUNT(*) FROM Books WHERE ISBN = ?";
+    String pubSql = "INSERT INTO Publications (PubID, Title, periodicity, topic) VALUES (?, ?, ?, ?)";
+    String bookSql = "INSERT INTO Books (PubID, ISBN, title, edition_number, publication_date) " +
+                     "VALUES (?, ?, ?, ?, ?)";
 
-        String checkPubSql = "SELECT COUNT(*) FROM Publications WHERE PubID = ?";
-        String checkBookSql = "SELECT COUNT(*) FROM Books WHERE ISBN = ?";
-        String pubSql = "INSERT INTO Publications (PubID, Title, periodicity, topic) VALUES (?, ?, ?, ?)";
-        String bookSql = "INSERT INTO Books (PubID, ISBN, title, full_text, edition_number, publication_date) " +
-                         "VALUES (?, ?, ?, ?, ?, ?)";
+    try (Connection conn = DBConnection.getConnection()) {
+        conn.setAutoCommit(false);
 
-        try (Connection conn = DBConnection.getConnection()) {
-            conn.setAutoCommit(false);
+        try (PreparedStatement checkPubStmt = conn.prepareStatement(checkPubSql);
+             PreparedStatement checkBookStmt = conn.prepareStatement(checkBookSql);
+             PreparedStatement pubStmt = conn.prepareStatement(pubSql);
+             PreparedStatement bookStmt = conn.prepareStatement(bookSql)) {
 
-            try (PreparedStatement checkPubStmt = conn.prepareStatement(checkPubSql);
-                 PreparedStatement checkBookStmt = conn.prepareStatement(checkBookSql);
-                 PreparedStatement pubStmt = conn.prepareStatement(pubSql);
-                 PreparedStatement bookStmt = conn.prepareStatement(bookSql)) {
-
-                checkPubStmt.setString(1, pubId);
-                try (ResultSet rs = checkPubStmt.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        System.out.println("Publication with PubID " + pubId + " already exists.");
-                        conn.rollback();
-                        return;
-                    }
+            checkPubStmt.setString(1, pubId);
+            try (ResultSet rs = checkPubStmt.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.out.println("Publication with PubID " + pubId + " already exists.");
+                    conn.rollback();
+                    return;
                 }
-
-                checkBookStmt.setString(1, isbn);
-                try (ResultSet rs = checkBookStmt.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        System.out.println("Book with ISBN " + isbn + " already exists.");
-                        conn.rollback();
-                        return;
-                    }
-                }
-
-                pubStmt.setString(1, pubId);
-                pubStmt.setString(2, publicationTitle);
-                pubStmt.setNull(3, Types.VARCHAR);
-                pubStmt.setString(4, topic);
-                int pubRows = pubStmt.executeUpdate();
-
-                bookStmt.setString(1, pubId);
-                bookStmt.setString(2, isbn);
-                bookStmt.setString(3, bookTitle);
-
-                if (fullText == null || fullText.trim().isEmpty()) {
-                    bookStmt.setNull(4, Types.LONGVARCHAR);
-                } else {
-                    bookStmt.setString(4, fullText);
-                }
-
-                bookStmt.setInt(5, editionNumber);
-                bookStmt.setDate(6, Date.valueOf(publicationDate));
-                int bookRows = bookStmt.executeUpdate();
-
-                conn.commit();
-                System.out.println("Book inserted successfully. Publications rows: " +
-                        pubRows + ", Books rows: " + bookRows);
-
-            } catch (SQLException e) {
-                conn.rollback();
-                System.out.println("Insert failed: " + e.getMessage());
             }
+
+            checkBookStmt.setString(1, isbn);
+            try (ResultSet rs = checkBookStmt.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.out.println("Book with ISBN " + isbn + " already exists.");
+                    conn.rollback();
+                    return;
+                }
+            }
+
+            pubStmt.setString(1, pubId);
+            pubStmt.setString(2, publicationTitle);
+            pubStmt.setNull(3, Types.VARCHAR);
+            pubStmt.setString(4, topic);
+            int pubRows = pubStmt.executeUpdate();
+
+            bookStmt.setString(1, pubId);
+            bookStmt.setString(2, isbn);
+            bookStmt.setString(3, bookTitle);
+            bookStmt.setInt(4, editionNumber);
+            bookStmt.setDate(5, Date.valueOf(publicationDate));
+            int bookRows = bookStmt.executeUpdate();
+
+            conn.commit();
+            System.out.println("Book inserted successfully. Publications rows: " +
+                    pubRows + ", Books rows: " + bookRows);
+
+        } catch (SQLException e) {
+            conn.rollback();
+            System.out.println("Insert failed: " + e.getMessage());
         }
     }
-
+}
     // -------------------------------------------------------------------------
     // 3. Show Book Details
     // -------------------------------------------------------------------------
